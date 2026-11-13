@@ -4,7 +4,7 @@
   'use strict';
   const categories = [
     { name: 'AI & Cybersecurity', symbol: '✦', priority: 1.10,
-      terms: [['artificial intelligence',7],['generative ai',7],['genai',7],['large language model',7],['llm',6],['machine learning',5],['prompt injection',9],['ai agent',6],['agentic ai',7],['deepfake',8],['model poisoning',8],['ai security',8],['chatgpt',5],['openai',4],['copilot',5],['neural network',6],['ai model',6],['ai-powered',5],['ai driven',5],['adversarial ai',7]],
+      terms: [['artificial intelligence',7],['generative ai',7],['genai',7],['large language model',7],['llm',6],['machine learning',5],['prompt injection',9],['ai agent',6],['agentic ai',7],['deepfake',8],['model poisoning',8],['ai security',8],['ai',5],['ai chip',9],['ai accelerator',8],['gpu',5],['nvidia',5],['chatgpt',5],['openai',4],['copilot',5],['neural network',6],['ai model',6],['ai-powered',5],['ai driven',5],['adversarial ai',7]],
       searches: ['artificial intelligence technology', 'AI computer chips data center', 'machine learning digital network', 'artificial intelligence cybersecurity'] },
     { name: 'Cloud Security', symbol: '☁', priority: 1.05,
       terms: [['cloud security',9],['cloud computing',7],['cloud infrastructure',7],['cloud environment',6],['cloud service',5],['public cloud',6],['aws',6],['amazon web services',8],['microsoft azure',7],['azure',4],['google cloud',7],['gcp',5],['kubernetes',7],['container security',8],['container',3],['s3 bucket',8],['storage bucket',8],['cloud misconfiguration',8],['cloud data',5],['multi-cloud',6],['cloud workload',7],['iam',4],['saas',5]],
@@ -55,9 +55,100 @@
     return match ? Math.min(match.length, 8) : 0;
   }
 
+  const entities = [
+    {name:'NVIDIA', rx:/\b(nvidia|geforce|blackwell|h100|h200|b200|gb200)\b/i, product:/\b(gpu|graphics|blackwell|processor|chip|semiconductor|h100|h200|b200|gb200)\b/i,
+      searches:['NVIDIA graphics card GPU', 'NVIDIA headquarters building', 'NVIDIA AI computer chip'], concept:['GPU graphics card close up', 'computer processor chip circuit board', 'artificial intelligence microchip']},
+    {name:'Microsoft', rx:/\b(microsoft|windows|outlook|microsoft 365|azure|defender|copilot|exchange online)\b/i,
+      searches:['Microsoft headquarters building', 'Microsoft office building', 'Microsoft computer Windows'], concept:['business laptop computer', 'software development computer screen', 'data center technology']},
+    {name:'Google', rx:/\b(google|alphabet|gemini|google cloud|chrome|android)\b/i,
+      searches:['Google headquarters building', 'Google office campus', 'Google server center'], concept:['search technology laptop computer','data center network servers']},
+    {name:'OpenAI', rx:/\b(openai|chatgpt|gpt-\d|sora)\b/i,
+      searches:['OpenAI office building','OpenAI technology'], concept:['AI computing microchip','artificial intelligence data center']},
+    {name:'Apple', rx:/\b(apple|iphone|ipad|macos|ios 2\d|macbook)\b/i,
+      searches:['Apple headquarters Cupertino', 'Apple iPhone smartphone', 'Apple technology store'], concept:['smartphone on desk','modern laptop computer']},
+    {name:'Amazon AWS', rx:/\b(amazon web services|amazon aws|aws|amazon s3|amazon cloud)\b/i,
+      searches:['Amazon data center','Amazon headquarters building','Amazon Web Services servers'], concept:['data center server racks','cloud computing technology']},
+    {name:'Intel', rx:/\b(intel|xeon|core ultra)\b/i,
+      searches:['Intel computer processor chip','Intel headquarters building'], concept:['microchip semiconductor macro','computer motherboard processor']},
+    {name:'AMD', rx:/\b(amd|advanced micro devices|radeon|ryzen|epyc)\b/i,
+      searches:['AMD processor CPU', 'AMD computer chip', 'AMD headquarters'], concept:['computer CPU processor chip','GPU circuit board']},
+    {name:'CrowdStrike', rx:/\b(crowdstrike|falcon sensor|falcon platform)\b/i,
+      searches:['CrowdStrike headquarters','CrowdStrike company building'], concept:['security operations computer screens','cybersecurity monitoring center']},
+    {name:'Cisco', rx:/\b(cisco|webex|talos)\b/i,
+      searches:['Cisco networking equipment','Cisco headquarters building'], concept:['network switches data center','enterprise networking hardware']},
+    {name:'Meta', rx:/\b(meta platforms|facebook|instagram|whatsapp|meta ai)\b/i,
+      searches:['Meta headquarters building','Facebook headquarters campus'], concept:['social media smartphone','data center servers']},
+    {name:'Palo Alto Networks', rx:/\b(palo alto networks|unit 42|cortex xdr)\b/i,
+      searches:['Palo Alto Networks headquarters building'], concept:['network security operations center','cybersecurity firewall server']},
+    {name:'Samsung', rx:/\b(samsung|galaxy smartphone|exynos)\b/i,
+      searches:['Samsung headquarters building','Samsung Galaxy smartphone'], concept:['smartphone on desk','semiconductor chip manufacturing']},
+    {name:'Cloudflare', rx:/\b(cloudflare|cloudflare workers)\b/i,
+      searches:['Cloudflare data center','Cloudflare company office'], concept:['data center server racks','secure internet network']},
+    {name:'Oracle', rx:/\b(oracle cloud|oracle database|oracle corporation)\b/i,
+      searches:['Oracle headquarters building','Oracle server facility'], concept:['business data center infrastructure']},
+  ];
+  const topicVisuals = [
+    {rx:/\b(ai chip|ai chips|gpu|semiconductor|processor|microchip|graphics card|silicon chip|blackwell|b200|gb200)\b/i,
+     searches:['microprocessor on circuit board close up','GPU graphics card hardware','semiconductor chip motherboard macro']},
+    {rx:/\b(data centre|data center|server|cloud infrastructure|aws|azure)\b/i,
+     searches:['modern data center server racks','server rack lights technology','data center computing hardware']},
+    {rx:/\b(ransomware|encrypt(?:ed|ion)? files|ransom demand)\b/i,
+     searches:['computer screen security warning','locked laptop cybersecurity','dark server room cyber security']},
+    {rx:/\b(phishing|fraudulent email|email scam|smishing)\b/i,
+     searches:['suspicious email inbox laptop','phishing email computer','smartphone email notification']},
+    {rx:/\b(healthcare|hospital|medical clinic)\b/i,
+     searches:['hospital computer workstation','hospital corridor technology','medical data computer']},
+    {rx:/\b(critical vulnerability|security flaw|zero.day|cve-\d|security patch)\b/i,
+     searches:['computer code on monitor close up','cybersecurity analyst at computer','computer security monitoring dashboard']},
+  ];
+
+  function normalizeInput(rawTitle, rawBody) {
+    let title=String(rawTitle||'').trim();
+    let body=String(rawBody||'').trim().replace(/<[^>]*>/g,' ');
+    // If the user pasted the entire article into only one box, infer the first line as a title.
+    if(!title&&body){
+      const firstLine=body.split(/\n/).map(s=>s.trim()).find(Boolean)||'';
+      title=(firstLine.length<=220 ? firstLine : (firstLine.match(/^.{20,160}?[.!?](?:\s|$)/)?.[0] || firstLine.slice(0,130))).trim();
+      if(title.length<12)title=body.slice(0,120).trim();
+    }
+    return {title,body};
+  }
+  function uniqueQueries(phrases){return [...new Set(phrases.map(x=>x.trim()).filter(Boolean))].slice(0,8);}
+  function findEntity(title,body){
+    const text=(title+' '+body.slice(0,3500));
+    const choices=entities.filter(x=>x.rx.test(text)).map(x=>({item:x,headline:x.rx.test(title)}));
+    choices.sort((a,b)=>Number(b.headline)-Number(a.headline));
+    return choices[0]?.item||null;
+  }
+  function buildImagePlan(title,body,primaryCategory) {
+    const content=title+' '+body;
+    const entity=findEntity(title,body);
+    const matched=topicVisuals.find(t=>t.rx.test(title))||topicVisuals.find(t=>t.rx.test(body));
+    let editorial=[],concept=[];
+    if(entity){
+      editorial=[...entity.searches];concept=[...(matched?.searches||entity.concept),...entity.concept];
+      if(entity.name==='NVIDIA' && entity.product.test(content)) {
+        editorial=['NVIDIA GPU graphics card','NVIDIA AI chip','NVIDIA headquarters building',...editorial];
+      }
+    } else if(matched) {
+      editorial=[...matched.searches];concept=[...matched.searches];
+    }
+    concept.push(...primaryCategory.searches);
+    if(!editorial.length)editorial=concept.slice(0,3);
+    return {
+      entity:entity?.name||'',
+      topic:matched?.searches?.[0]||primaryCategory.searches[0],
+      editorialSearches:uniqueQueries(editorial),
+      stockSearches:uniqueQueries(concept),
+      primaryQuery:entity?editorial[0]:concept[0],
+      caption:entity?`Specific company detected: ${entity.name}. Look for an authentic editorial photograph; generic stock images should not be presented as a photo of that company.`:'Showing story-related concepts; these photos may illustrate the topic rather than the actual event.'
+    };
+  }
+
   function analyseArticle(title, article) {
-    const headline = String(title || '').toLowerCase().slice(0, 260);
-    const body = String(article || '').toLowerCase().slice(0, 16000);
+    const parsed=normalizeInput(title,article);
+    const headline = parsed.title.toLowerCase().slice(0, 260);
+    const body = parsed.body.toLowerCase().slice(0, 16000);
     const combined = `${headline} ${body}`;
     const scored = categories.map(category => {
       let score = 0;
@@ -76,7 +167,7 @@
 
     const meaningful = scored.filter(c => c.score > 0);
     let primary = scored[0];
-    if (!primary || primary.score < 5) primary = categories.find(c => c.name === 'Cybersecurity News & Threats');
+    if (!primary || primary.score < 5) primary = scored.find(c => c.name === 'Cybersecurity News & Threats');
     const secondary = meaningful.filter(c => c.name !== primary.name && c.score >= Math.max(5,primary.score * 0.20)).slice(0, 3);
     const strong = primary.score >= 34 && primary.score >= (scored.find(c=>c.name!==primary.name)?.score || 0) * 1.30;
     const confidence = strong ? 'Strong keyword match' : primary.score >= 12 ? 'Likely match' : 'Broad match — review';
@@ -89,10 +180,12 @@
     if (matchedScene && !searches.some(s=>s===matchedScene.query)) searches.splice(1,0,matchedScene.query);
     // Prefer varied stock-photo-friendly phrases, not a verbatim full headline.
     searches = [...new Set(searches.map(s => s.trim()))].slice(0, 5);
+    const plan=buildImagePlan(parsed.title,parsed.body,primary);
+    searches=uniqueQueries([...plan.editorialSearches,...plan.stockSearches,...searches]);
     return {
       primary: primary.name, symbol: primary.symbol, confidence, reason,
       other: secondary.map(c=>c.name), searches,
-      matchedKeywords: reasons
+      matchedKeywords: reasons, inferredTitle: parsed.title, ...plan
     };
   }
 

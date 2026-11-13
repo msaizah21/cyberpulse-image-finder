@@ -28,8 +28,8 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-line"></span> CONTENT INTELLIGENCE / IMAGE DISCOVERY</div>
-        <h1 id="hero-title">An image that <em>fits the story.</em></h1>
-        <p>Paste your cybersecurity article. Get a CyberPulse category suggestion, focused image-search ideas, and openly licensed visuals to review before publishing.</p>
+        <h1 id="hero-title">Find the <em>right article banner.</em></h1>
+        <p>Paste any CyberPulse article — including NVIDIA or AI chip news. Get a category, subject-specific image searches, and a 16:9 banner preview before publishing.</p>
         <div class="hero-features"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free sources</span><span><b aria-hidden="true">✓</b> No publishing access</span></div>
       </div>
       <div class="hero-side" aria-hidden="true">
@@ -43,14 +43,14 @@
       <section class="editor-panel panel" aria-labelledby="editor-title">
         <div class="panel-heading"><div><span class="step-label">01 / CONTENT INPUT</span><h2 id="editor-title">Your article</h2></div><span class="icon-circle" aria-hidden="true">✎</span></div>
         <form id="article-form">
-          <label for="article-title">Article title <span class="hint">Recommended</span></label>
-          <input id="article-title" name="title" type="text" placeholder="e.g. Microsoft patches critical Outlook zero-day" maxlength="240" autocomplete="off">
+          <label for="article-title">Article title <span class="hint">Optional: we detect a headline from pasted text</span></label>
+          <input id="article-title" name="title" type="text" placeholder="e.g. NVIDIA launches a new Blackwell AI chip" maxlength="240" autocomplete="off">
           <label for="article-body">Article text <span class="hint">Paste the headline, summary or full article</span></label>
           <textarea id="article-body" name="body" rows="11" maxlength="16000" placeholder="Paste the cybersecurity news or analysis here. We’ll identify the topic and suggest better image-search keywords…"></textarea>
           <div class="input-meta"><span id="char-count">0 characters</span><span>Article text stays in your browser</span></div>
           <div class="editor-actions">
             <button id="analyze-button" class="button button-primary" type="submit"><span aria-hidden="true">✦</span> Analyse & find images <span aria-hidden="true">→</span></button>
-            <button id="sample-button" class="button button-quiet" type="button">Try example</button>
+            <button id="sample-button" class="button button-quiet" type="button">Try NVIDIA example</button>
             <button id="clear-button" class="button button-quiet muted-button" type="button">Clear</button>
           </div>
         </form>
@@ -74,24 +74,44 @@
           <label class="search-label" for="search-query">Visual search keywords</label>
           <div class="query-row"><input id="search-query" maxlength="120" aria-label="Image search keywords" type="text" placeholder="Search keywords"><button id="refresh-search" type="button" class="button button-small">Search ↗</button></div>
           <div id="query-chips" class="query-chips" aria-label="Suggested visual search phrases"></div>
-          <p class="tips-text">Tip: specific physical objects usually work better than abstract cybersecurity terms.</p>
+          <p class="tips-text">Tip: the tool now detects brands, products and physical subjects, not just broad categories.</p>
           <details class="category-details"><summary>View all available categories</summary><div id="category-list" class="category-list"></div></details>
         </div>
       </aside>
     </div>
 
     <section class="results-section" aria-labelledby="results-title">
-      <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Search free, openly licensed visuals matched to your article.</p></div>
+      <div class="visual-intent" id="visual-intent" hidden>
+        <div class="intent-explainer"><strong id="visual-context-title">Image direction</strong><p id="visual-context-copy">Find an authentic editorial photograph or a conceptual banner.</p></div>
+        <div class="intent-buttons" role="group" aria-label="Image search mode">
+          <button type="button" id="editorial-mode" class="intent-btn active" aria-pressed="true">◎ Exact subject / company</button>
+          <button type="button" id="stock-mode" class="intent-btn" aria-pressed="false">✦ Professional stock concept</button>
+        </div>
+      </div>
+      <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Search landscape, preferably high-resolution photos matched to your article.</p></div>
         <div class="results-controls" id="results-controls" hidden><label for="license-filter">License</label><select id="license-filter"><option value="all">All eligible licenses</option><option value="no-credit">CC0 / Public domain</option><option value="credit">Attribution required</option></select><label for="shape-filter">Orientation</label><select id="shape-filter"><option value="landscape">Landscape</option><option value="all">All shapes</option></select></div>
       </div>
       <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to explore photos and illustrations relevant to its topic.</p></div>
       <div id="image-grid" class="image-grid" hidden></div>
-      <div id="more-search" class="more-search" hidden><p>Not quite the right visual? Try a broader search:</p><div id="more-chips" class="query-chips"></div><a id="open-openverse" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">Browse on Openverse ↗</a></div>
+      <div id="more-search" class="more-search" hidden>
+        <p>Not suitable for a CyberPulse banner? Try a different keyword or open these photo collections:</p>
+        <div id="more-chips" class="query-chips"></div>
+        <div class="provider-links"><a id="open-openverse" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">Openverse ↗</a><a id="open-pexels" href="https://www.pexels.com/" target="_blank" rel="noopener noreferrer">Pexels stock photos ↗</a><a id="open-unsplash" href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash photos ↗</a><a id="open-pixabay" href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">Pixabay ↗</a></div>
+        <p class="more-disclaimer">Some stock sites require opening the original site. Company-specific photos are editorial imagery, not necessarily generic royalty-free stock. Verify usage permissions and avoid misleading captions.</p>
+      </div>
     </section>
   </main>
 
   <footer class="footer page-width"><div><strong>Cyber<span class="brand-accent">Pulse</span></strong> <span>Article Image Finder</span></div><p>Images remain owned by their creators. Always check the source, individual license, attribution and any trademark/personality rights before publishing.</p><span>Independent editorial utility · Not connected to WordPress publishing</span></footer>
+  <dialog id="banner-dialog" class="banner-dialog" aria-labelledby="banner-dialog-title">
+    <div class="banner-dialog-heading"><div><span class="step-label">CYBERPULSE FEATURED IMAGE</span><h2 id="banner-dialog-title">16:9 banner preview</h2></div><button id="close-banner" class="button button-quiet" type="button" aria-label="Close banner preview">✕ Close</button></div>
+    <div class="banner-preview-frame"><img id="banner-preview-image" alt="Article image shown in 16:9 crop"></div>
+    <p id="banner-preview-title" class="banner-caption"></p>
+    <p class="banner-warning">This is a crop preview, not a new image. Download the original and crop in WordPress. Verify the source licence and whether the image truly depicts the company/event.</p>
+    <div class="banner-actions"><button id="banner-download" class="button button-primary" type="button">Download original ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./config.js"></script>
   <script src="./analysis.js"></script>
   <script src="./app.js"></script>
 </body>
