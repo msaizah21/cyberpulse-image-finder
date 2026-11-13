@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080e1d">
+  <meta name="description" content="CyberPulse editorial image finder: suggest a cybersecurity category and discover openly licensed images matched to an article.">
+  <title>CyberPulse | Article Image Finder</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="topbar page-width">
+    <a class="brand" href="./" aria-label="CyberPulse Image Finder home">
+      <span class="brand-icon" aria-hidden="true"><span class="pulse-graphic">⌁</span></span>
+      <span><strong>Cyber<span class="brand-accent">Pulse</span></strong><small>EDITORIAL TOOLS</small></span>
+    </a>
+    <div class="top-actions">
+      <span class="status-dot"><i aria-hidden="true"></i> Public image discovery</span>
+      <a href="https://cyberpulsemag.com/articles/" target="_blank" rel="noopener noreferrer" class="site-link">CyberPulse articles <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main class="page-width">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> CONTENT INTELLIGENCE / IMAGE DISCOVERY</div>
+        <h1 id="hero-title">An image that <em>fits the story.</em></h1>
+        <p>Paste your cybersecurity article. Get a CyberPulse category suggestion, focused image-search ideas, and openly licensed visuals to review before publishing.</p>
+        <div class="hero-features"><span><b aria-hidden="true">✓</b> No account needed</span><span><b aria-hidden="true">✓</b> Free sources</span><span><b aria-hidden="true">✓</b> No publishing access</span></div>
+      </div>
+      <div class="hero-side" aria-hidden="true">
+        <div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div>
+        <div class="core-mark">CP</div>
+        <div class="orbit-label orbit-label-top">TOPIC MATCH</div><div class="orbit-label orbit-label-bottom">VISUAL SEARCH</div>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="editor-panel panel" aria-labelledby="editor-title">
+        <div class="panel-heading"><div><span class="step-label">01 / CONTENT INPUT</span><h2 id="editor-title">Your article</h2></div><span class="icon-circle" aria-hidden="true">✎</span></div>
+        <form id="article-form">
+          <label for="article-title">Article title <span class="hint">Recommended</span></label>
+          <input id="article-title" name="title" type="text" placeholder="e.g. Microsoft patches critical Outlook zero-day" maxlength="240" autocomplete="off">
+          <label for="article-body">Article text <span class="hint">Paste the headline, summary or full article</span></label>
+          <textarea id="article-body" name="body" rows="11" maxlength="16000" placeholder="Paste the cybersecurity news or analysis here. We’ll identify the topic and suggest better image-search keywords…"></textarea>
+          <div class="input-meta"><span id="char-count">0 characters</span><span>Article text stays in your browser</span></div>
+          <div class="editor-actions">
+            <button id="analyze-button" class="button button-primary" type="submit"><span aria-hidden="true">✦</span> Analyse & find images <span aria-hidden="true">→</span></button>
+            <button id="sample-button" class="button button-quiet" type="button">Try example</button>
+            <button id="clear-button" class="button button-quiet muted-button" type="button">Clear</button>
+          </div>
+        </form>
+        <div class="privacy-note"><span aria-hidden="true">◈</span> Only generated search keywords are sent to the image-search providers. This tool does not save, submit or publish your article.</div>
+      </section>
+
+      <aside class="insights-panel panel" aria-labelledby="insights-title">
+        <div class="panel-heading"><div><span class="step-label">02 / EDITORIAL MATCH</span><h2 id="insights-title">Category analysis</h2></div><span class="icon-circle icon-spark" aria-hidden="true">✧</span></div>
+        <div id="analysis-empty" class="analysis-empty">
+          <div class="empty-radar" aria-hidden="true"><span>✳</span></div>
+          <h3>Ready when you are</h3>
+          <p>Add an article to see its most relevant CyberPulse category and tailored image searches.</p>
+          <div class="taxonomy-meta">Matches against <strong>10 supplied categories</strong></div>
+        </div>
+        <div id="analysis-content" hidden>
+          <div class="suggested-label">SUGGESTED PRIMARY CATEGORY <span id="confidence-pill" class="confidence-pill"></span></div>
+          <div class="category-hero"><div id="category-symbol" class="category-symbol" aria-hidden="true">◎</div><div><h3 id="primary-category"></h3><p id="category-reason"></p></div></div>
+          <div class="subhead">OTHER POSSIBLE CATEGORIES</div>
+          <div id="secondary-categories" class="secondary-categories"></div>
+          <div class="thin-rule"></div>
+          <label class="search-label" for="search-query">Visual search keywords</label>
+          <div class="query-row"><input id="search-query" maxlength="120" aria-label="Image search keywords" type="text" placeholder="Search keywords"><button id="refresh-search" type="button" class="button button-small">Search ↗</button></div>
+          <div id="query-chips" class="query-chips" aria-label="Suggested visual search phrases"></div>
+          <p class="tips-text">Tip: specific physical objects usually work better than abstract cybersecurity terms.</p>
+          <details class="category-details"><summary>View all available categories</summary><div id="category-list" class="category-list"></div></details>
+        </div>
+      </aside>
+    </div>
+
+    <section class="results-section" aria-labelledby="results-title">
+      <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Search free, openly licensed visuals matched to your article.</p></div>
+        <div class="results-controls" id="results-controls" hidden><label for="license-filter">License</label><select id="license-filter"><option value="all">All eligible licenses</option><option value="no-credit">CC0 / Public domain</option><option value="credit">Attribution required</option></select><label for="shape-filter">Orientation</label><select id="shape-filter"><option value="landscape">Landscape</option><option value="all">All shapes</option></select></div>
+      </div>
+      <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to explore photos and illustrations relevant to its topic.</p></div>
+      <div id="image-grid" class="image-grid" hidden></div>
+      <div id="more-search" class="more-search" hidden><p>Not quite the right visual? Try a broader search:</p><div id="more-chips" class="query-chips"></div><a id="open-openverse" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">Browse on Openverse ↗</a></div>
+    </section>
+  </main>
+
+  <footer class="footer page-width"><div><strong>Cyber<span class="brand-accent">Pulse</span></strong> <span>Article Image Finder</span></div><p>Images remain owned by their creators. Always check the source, individual license, attribution and any trademark/personality rights before publishing.</p><span>Independent editorial utility · Not connected to WordPress publishing</span></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./analysis.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
