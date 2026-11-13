@@ -319,11 +319,6 @@
   queryInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();searchImages(queryInput.value);}});
   licenseFilter.addEventListener('change',()=>{if(analysis)searchImages(currentQuery||queryInput.value);});
   shapeFilter.addEventListener('change',()=>{if(analysis)searchImages(currentQuery||queryInput.value);});
-  $('sample-button').addEventListener('click',()=>{
-    titleInput.value='NVIDIA announces next-generation Blackwell AI chips for data centers';
-    bodyInput.value='NVIDIA has announced a new Blackwell artificial intelligence GPU designed for large language model training and inference in modern data centers. The new processor targets AI workloads and high-performance computing, and cybersecurity researchers are watching the technology.';
-    count();analyzeNow();
-  });
   $('clear-button').addEventListener('click',()=>{
     controller?.abort();analysis=null;currentQuery='';selectedItem=null;form.reset();count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);show($('results-controls'),false);

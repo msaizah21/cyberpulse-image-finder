@@ -20,3 +20,31 @@
 .banner-caption{font-weight:700;font-size:15px}.banner-warning{color:#a6b8ce;font-size:12px;line-height:1.65}.banner-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 @media(max-width:900px){.visual-intent{align-items:flex-start;flex-direction:column}}
 @media(max-width:480px){.banner-dialog{padding:14px}.banner-dialog-heading h2{font-size:17px}.intent-buttons{width:100%}.intent-btn{flex:1}}
+
+
+/* CyberPulse & CyberWaze identity: official supplied logo symbols + editorial credit */
+.brand-icon{width:52px;height:52px;padding:3px;flex:none;border-radius:14px;background:#0c1428;border-color:rgba(92,117,247,.30);box-shadow:0 6px 22px rgba(63,79,255,.15)}
+.brand-icon img{display:block;width:100%;height:100%;object-fit:contain}
+.brand strong{letter-spacing:.7px;color:#fff;font-size:22px;font-weight:850}
+.brand small{letter-spacing:1.6px;margin-top:5px;font-weight:700}
+.core-mark{width:124px;height:124px;overflow:hidden;border-radius:27px;background:linear-gradient(145deg,rgba(12,18,40,.94),rgba(15,21,48,.97));border:1px solid #3a4d84;box-shadow:0 0 65px rgba(57,89,231,.20)}
+.core-mark img{display:block;object-fit:contain;width:108px;height:108px}
+.orbit-inner{width:173px;height:173px;border-color:rgba(95,122,255,.35)}
+.footer{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,1fr);gap:22px 38px;align-items:start;padding-top:27px;padding-bottom:32px}
+.footer-brand-block{min-width:0}
+.footer-brand-lockup{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.footer-brand-lockup img{width:42px;height:42px;object-fit:contain;flex:none}
+.footer-brand-name{display:flex;flex-direction:column;gap:2px}
+.footer-brand-name strong{font-size:15px;letter-spacing:1px;color:#fff}
+.footer-brand-name span{margin:0;font-size:11px;color:#a9b9d0}
+.footer-brand-block p{max-width:650px;margin:0;font-size:11px;line-height:1.75;color:#8b9eb9}
+.footer-credit{display:flex;align-items:center;gap:14px;padding:17px 19px;border:1px solid rgba(103,121,215,.31);border-radius:13px;background:linear-gradient(120deg,rgba(25,32,64,.85),rgba(16,26,50,.88))}
+.footer-credit>img{width:48px;height:48px;object-fit:contain;flex:none}
+.footer-credit-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.footer-credit-copy span{margin:0}
+.footer-credit-copy .footer-credit-kicker{font-size:9px;letter-spacing:1.5px;font-weight:800;color:#91c3fc}
+.footer-credit-copy strong{font-size:13px;line-height:1.3;color:#fff;font-weight:750}
+.footer-credit-copy>span:last-child{font-size:11px;color:#bdc9e1}
+.footer-bottom-note{grid-column:1/-1;max-width:none!important;margin:0!important;border-top:1px solid rgba(139,158,191,.13);padding-top:14px;font-size:10px!important;color:#7f91ac!important}
+@media(max-width:780px){.footer{grid-template-columns:1fr;gap:22px}.footer-credit{max-width:490px}.footer-bottom-note{grid-column:1}}
+@media(max-width:530px){.brand-icon{width:43px;height:43px}.brand strong{font-size:16px;letter-spacing:.55px}.brand small{font-size:8px;letter-spacing:1.2px}.footer-brand-name span{display:block;margin:0}.footer-credit{padding:15px 13px}.footer-credit-copy strong{font-size:12px}}

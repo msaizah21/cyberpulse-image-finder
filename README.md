@@ -6,6 +6,14 @@ A standalone, public, GitHub Pages-compatible tool for CyberPulse editorial staf
 **GitHub repository:** https://github.com/msaizah21/cyberpulse-image-finder  
 **Expected GitHub Pages site:** https://msaizah21.github.io/cyberpulse-image-finder/
 
+## Official project branding
+
+This version uses the user-supplied CyberPulse symbol in the header, main hero graphic, footer and favicon, and the user-supplied CyberWaze symbol in a small footer credit.
+
+**Visible credit:** “Made by Aiza Sajid, CyberWaze” and “Built for the CyberWaze team.”
+
+The new `/assets` folder is **required**: upload it alongside `index.html`, `styles.css`, `app.js` and the other top-level files. No separate image hosting or API is needed for the logos. This change only affects branding; it preserves the existing article analysis and image-search behavior.
+
 ## What improved in v2
 
 - **Fixed a real bug:** the old category fallback referenced an object without `signals`, so articles with few known keywords could fail during analysis.
@@ -27,7 +35,7 @@ Category selection and photo queries use a **local rules-based analyser**. It is
 1. Download and **extract** the latest ZIP. Do **not** upload the ZIP as one GitHub file.
 2. Go to: https://github.com/msaizah21/cyberpulse-image-finder
 3. Click **Add file → Upload files**.
-4. Upload **all files from the extracted `cyberpulse-image-finder-v2` folder** directly to the repo root. If GitHub detects existing files of the same names (`index.html`, `app.js`, `analysis.js`, `styles.css`, `README.md`), GitHub will update them in this commit.
+4. Upload **all files from the extracted project folder**, including the `assets` folder, directly to the repo root. If GitHub detects existing files of the same names (`index.html`, `app.js`, `analysis.js`, `styles.css`, `README.md`), GitHub will update them in this commit.
 5. Commit message: `Improve article analysis and banner images` → **Commit changes**.
 6. If GitHub Pages has not been set up: **Settings → Pages → Deploy from a branch → main → /(root) → Save**. The repository must be eligible for GitHub Pages (a public repo works on GitHub Free).
 7. When deployment succeeds, open the expected Pages URL: https://msaizah21.github.io/cyberpulse-image-finder/
@@ -39,7 +47,7 @@ Category selection and photo queries use a **local rules-based analyser**. It is
 
 1. Paste the article in **Article text**. Leave **Article title** empty if desired.
 2. Click **Analyse & find images**; category appears without waiting for the external image APIs.
-3. For a brand story (e.g. NVIDIA announces a new AI processor), use **Exact subject/company** to find actual NVIDIA and GPU imagery. For a more generic stylised chip photo, click **Professional stock concept**.
+3. For a company or product article, use **Exact subject/company** for subject-specific imagery. For a more generic visual, choose **Professional stock concept**.
 4. Switch search phrases or type your own keywords if needed. Use **Preview 16:9** to see a WordPress-style article-banner crop.
 5. Check the photo's original creator page and licence; download from the provider or original page, then upload to WordPress. **The tool does not change your WordPress website.**
 
