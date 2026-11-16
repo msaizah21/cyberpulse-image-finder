@@ -8,25 +8,37 @@
   let modelPromise = null;
   const MODEL = 'Xenova/clip-vit-base-patch32';
   const CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+  const CDN_FALLBACK = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm';
+  // Include plausible *competing technology photos* to avoid scores inflated by
+  // comparing cybersecurity pictures only against mountains and restaurant meals.
   const fallback = [
-    'a realistic photograph of mountains and a forest',
-    'a realistic photograph of food served at a restaurant',
-    'a realistic photograph of cars on a city street',
-    'a realistic photograph of a beach and ocean'
+    'a photograph of a university campus building',
+    'a photograph of a government Capitol building',
+    'a photograph of computer chips on a circuit board',
+    'a photograph of data center server racks',
+    'a photograph of office workers using laptops',
+    'a photograph of a smartphone on a desk',
+    'a photograph of an airplane at an airport',
+    'a photograph of flowers and trees in a garden'
   ];
   const clean = text=>String(text||'').replace(/[^a-z0-9 -]/gi,' ').replace(/\s+/g,' ').trim().slice(0,82);
   function candidates(analysis) {
-    const searches = [...new Set([analysis?.topic,...(analysis?.stockSearches||[])].map(clean).filter(Boolean))];
+    const searches = [...new Set([...(analysis?.visualConcepts||[]),analysis?.topic,...(analysis?.stockSearches||[])].map(clean).filter(Boolean))];
     const positive = searches.slice(0,3).map(s=>`a realistic professional photograph of ${s}`);
     while(positive.length<2) positive.push('a professional photograph of cybersecurity computers');
-    const other = fallback.filter(s=>!positive.some(v=>v.toLowerCase().includes(s.slice(0,18).toLowerCase())));
-    return {labels:[...positive.slice(0,3),...other.slice(0,4)],positiveCount:positive.slice(0,3).length};
+    const key=s=>new Set(s.toLowerCase().match(/[a-z]{4,}/g)||[]);
+    const target=new Set(positive.join(' ').toLowerCase().match(/[a-z]{4,}/g)||[]);
+    const other=fallback.map(label=>({label,shared:[...key(label)].filter(w=>target.has(w)&&!['photograph','photo','realistic','professional'].includes(w)).length}))
+      .sort((a,b)=>a.shared-b.shared).slice(0,6).map(v=>v.label);
+    return {labels:[...positive.slice(0,3),...other],positiveCount:positive.slice(0,3).length};
   }
   async function getModel(onProgress=()=>{}) {
     if(!modelPromise) {
       modelPromise = (async()=>{
         onProgress('Loading the free AI image-vision library…');
-        const lib = await import(CDN);
+        let lib;
+        try{lib=await import(CDN);}
+        catch(firstError){onProgress('Trying an alternative free library mirror…');lib=await import(CDN_FALLBACK);}
         onProgress('Downloading CLIP vision model — first use can be large…');
         // Use a quantized model for resource-constrained browsers; WASM works without WebGPU.
         return lib.pipeline('zero-shot-image-classification',MODEL,{

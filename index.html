@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080e1d">
   <meta name="description" content="CyberPulse Pro: find editorial photos, suggest article headlines and estimate banner relevance without an API key.">
-  <title>CyberPulse Studio | Image Finder</title>
+  <title>CyberPulse Newsroom | Editorial Banner Studio</title>
   <link rel="icon" href="./favicon.png" type="image/png">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -28,9 +28,9 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-line"></span> BUILT FOR THE CYBERWAZE TEAM · IMAGE DISCOVERY</div>
-        <h1 id="hero-title">Find your <em>perfect editorial visual.</em></h1>
-        <p>Paste a story without a title. Get editorial headline ideas, fresh image discovery, article-match ratings, and optional FREE on-device vision AI that actually examines image pixels.</p>
-        <div class="hero-features"><span><b aria-hidden="true">✓</b> Optional visual AI</span><span><b aria-hidden="true">✓</b> More photo batches</span><span><b aria-hidden="true">✓</b> No publishing access</span></div>
+        <h1 id="hero-title">Make every story <em>look news-ready.</em></h1>
+        <p>Paste a news article. Get grounded headlines, CyberPulse category suggestions, story-specific editorial photos, WordPress crop previews, and optional free CLIP vision to check actual image pixels.</p>
+        <div class="hero-features"><span><b aria-hidden="true">✓</b> Real photo discovery</span><span><b aria-hidden="true">✓</b> WordPress card preview</span><span><b aria-hidden="true">✓</b> No paid API key</span></div>
       </div>
       <div class="hero-side" aria-hidden="true">
         <div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div>
@@ -62,7 +62,7 @@
           <div class="empty-radar" aria-hidden="true"><span>✳</span></div>
           <h3>Ready when you are</h3>
           <p>Add an article to see its most relevant CyberPulse category and tailored image searches.</p>
-          <div class="taxonomy-meta">Matches against <strong>10 supplied categories</strong></div>
+          <div class="taxonomy-meta">Matches against <strong>10 CyberPulse category suggestions</strong></div>
         </div>
         <div id="analysis-content" hidden>
           <div class="suggested-label">SUGGESTED PRIMARY CATEGORY <span id="confidence-pill" class="confidence-pill"></span></div>
@@ -70,14 +70,14 @@
           <div class="subhead">OTHER POSSIBLE CATEGORIES</div>
           <div id="secondary-categories" class="secondary-categories"></div>
           <div class="thin-rule"></div>
-          <div class="suggestion-heading"><span class="subhead">SUGGESTED ARTICLE TITLES</span><span class="micro-note">Click Use to populate title</span></div>
+          <div class="suggestion-heading"><span class="subhead">NEWSROOM HEADLINE SUGGESTIONS</span><span class="micro-note">Click Use to populate title</span></div>
           <div id="headline-suggestions" class="headline-suggestions"></div>
-          <p class="tips-text">Suggestions use your article text. Check facts and edit before publishing.</p>
+          <p class="tips-text" id="headline-source-note">No invented facts: headline ideas are based on the supplied article. Edit and verify before publishing.</p>
           <div class="thin-rule"></div>
           <label class="search-label" for="search-query">Visual search keywords</label>
           <div class="query-row"><input id="search-query" maxlength="120" aria-label="Image search keywords" type="text" placeholder="Search keywords"><button id="refresh-search" type="button" class="button button-small">↻ Fresh results</button></div>
           <div id="query-chips" class="query-chips" aria-label="Suggested visual search phrases"></div>
-          <p class="tips-text">Edit keywords and press Enter for a completely new search. <strong>Fresh results</strong> keeps what you found and explores later batches. Photos can be illustrative, not proof of an incident.</p>
+          <p class="tips-text">Change the search phrase, or switch photo direction below. <strong>Fresh results</strong> explores later pages and keeps earlier photos. Stock images do not prove a reported incident happened.</p>
           <details class="category-details"><summary>View all available categories</summary><div id="category-list" class="category-list"></div></details>
         </div>
       </aside>
@@ -85,25 +85,33 @@
 
     <section class="results-section" aria-labelledby="results-title">
       <div class="visual-intent" id="visual-intent" hidden>
-        <div class="intent-explainer"><span class="step-label">PHOTO DISCOVERY MODE</span><strong id="visual-context-title">Free editorial photography</strong><p id="visual-context-copy">Wide, high-resolution photographic concepts selected from article themes. A stock image is illustrative and does not depict an actual incident.</p></div>
-        <div class="intent-emblem"><span>✦</span> Real photo results</div>
+        <div class="intent-explainer"><span class="step-label">03 / EDITORIAL PHOTO DIRECTION</span><strong id="visual-context-title">The image should tell the same story</strong><p id="visual-context-copy">Story-aware visual direction appears after analysis.</p>
+          <div class="newsroom-facts"><span id="newsroom-angle">News angle</span><span id="newsroom-subject">Subject</span></div>
+          <div class="mode-picker" role="group" aria-label="Choose photo direction">
+            <button class="intent-btn" type="button" data-photo-mode="editorial">Company / subject</button>
+            <button class="intent-btn" type="button" data-photo-mode="context">Real-world photo</button>
+            <button class="intent-btn" type="button" data-photo-mode="concept">Concept / stock</button>
+          </div>
+          <p id="editorial-warning" class="editorial-warning">Choose images that depict what the story is actually about.</p>
+        </div>
+        <div class="editorial-tools"><span class="intent-emblem"><span>✦</span> Newsroom workflow</span><button id="copy-brief" type="button" class="button button-quiet">Copy editorial brief</button></div>
       </div>
       <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Find openly licensed photos matched to the topic; higher-resolution, wider images appear first when equally relevant.</p></div>
         <div class="results-controls" id="results-controls" hidden>
           <label for="match-filter">Match</label><select id="match-filter"><option value="0">All rated</option><option value="60">60%+</option><option value="75">75%+</option></select>
           <label for="source-filter">Source</label><select id="source-filter"><option value="all">All sources</option><option value="Openverse">Openverse</option><option value="Wikimedia Commons">Wikimedia Commons</option></select>
-          <label for="sort-filter">Sort</label><select id="sort-filter"><option value="match">Best match</option><option value="resolution">Resolution</option></select>
+          <label for="sort-filter">Sort</label><select id="sort-filter"><option value="match">Best match</option><option value="resolution">Resolution</option><option value="visual">AI-scanned first</option></select>
           <label for="license-filter">Rights</label><select id="license-filter"><option value="all">Eligible licences</option><option value="no-credit">CC0 / PD + stock licence</option><option value="credit">CC BY / CC BY-SA</option></select>
           <button id="saved-toggle" type="button" class="saved-toggle" aria-pressed="false">☆ Saved <span id="saved-count">0</span></button>
         </div>
       </div>
       <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to see relevant photos with a match rating and original source.</p></div>
-      <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match %</strong> starts as an estimated metadata / topic / resolution / banner score. After an optional Vision AI scan it blends metadata with pixel-based topic affinity. Neither percentage is a statistical probability or publication approval.</div>
+      <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match % is an estimated ranking, not a factual probability.</strong> Before Vision AI, it uses image metadata, subject keywords, resolution and crop. An AI-verified badge appears only after CLIP has actually inspected the image pixels. Always verify what the photograph depicts and its licence.</div>
       <div id="image-grid" class="image-grid" hidden></div>
       <div id="load-more-wrap" class="load-more-wrap" hidden><button id="load-more" type="button" class="button button-primary">↻ Find more photos</button><button id="deep-search" type="button" class="button button-quiet">✦ Deep search · 3 batches</button><span id="load-more-status">Each click searches the next photo batch and avoids previously shown images.</span></div>
       <div class="vision-panel panel" id="vision-panel" hidden>
-        <div class="vision-top"><div><span class="step-label">FREE / OPT-IN IMAGE VISION</span><h3>Make your match rating actually look at the photo.</h3><p>Run an open-source CLIP image model locally in your browser to compare real photo pixels with article concepts. No paid vision API key. First use downloads model files (potentially hundreds of MB), which may take time and use significant memory.</p></div><span class="vision-tag">PRIVATE ON-DEVICE AI</span></div>
-        <div class="vision-actions"><button id="scan-top" class="button button-primary" type="button">✦ AI scan top 3 photos</button><label class="upload-label" for="vision-upload">⌁ Upload photo to scan<input id="vision-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
+        <div class="vision-top"><div><span class="step-label">FREE / OPT-IN IMAGE VISION</span><h3>Check actual image pixels against this news story.</h3><p>Run an open-source CLIP image model locally in your browser to compare real photo pixels with article concepts. No paid vision API key. First use downloads model files (potentially hundreds of MB), which may take time and use significant memory.</p></div><span class="vision-tag">PRIVATE ON-DEVICE AI</span></div>
+        <div class="vision-actions"><button id="scan-top" class="button button-primary" type="button">✦ Vision AI: check top 3 photos</button><label class="upload-label" for="vision-upload">⌁ Upload photo to scan<input id="vision-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
         <p id="vision-status" class="vision-status" role="status" aria-live="polite">Optional: scan a photo to add an AI visual-affinity rating. Some external image hosts block browser image access; in that case download the image from its original source and upload it here.</p>
         <div id="upload-vision-result" class="upload-vision-result" hidden></div>
       </div>
@@ -120,7 +128,7 @@
     <div class="footer-brand-block">
       <div class="footer-brand-lockup">
         <img src="./assets/cyberpulse-mark.png" width="42" height="42" alt="CyberPulse logo">
-        <div class="footer-brand-name"><strong>CYBERPULSE</strong><span>Image Finder</span></div>
+        <div class="footer-brand-name"><strong>CYBERPULSE</strong><span>Newsroom Image Studio</span></div>
       </div>
       <p>Images remain owned by their creators. Always check the original source, license, attribution and any trademark or personality rights before publishing.</p>
     </div>
@@ -136,14 +144,17 @@
   </footer>
   <dialog id="banner-dialog" class="banner-dialog" aria-labelledby="banner-dialog-title">
     <div class="banner-dialog-heading"><div><span class="step-label">CYBERPULSE FEATURED IMAGE</span><h2 id="banner-dialog-title">16:9 banner preview</h2></div><button id="close-banner" class="button button-quiet" type="button" aria-label="Close banner preview">✕ Close</button></div>
-    <div class="banner-preview-frame"><img id="banner-preview-image" alt="Article image shown in 16:9 crop"></div>
+    <div class="crop-switch" role="group" aria-label="Preview image crop"><button id="crop-card" type="button" class="crop-choice active">CyberPulse card · 3:2</button><button id="crop-feature" type="button" class="crop-choice">Featured banner · 16:9</button></div>
+    <div id="wp-card-frame" class="wp-card-frame"><div class="banner-preview-frame"><img id="banner-preview-image" alt="Article image crop preview"><span id="wp-card-category" class="wp-card-category">CYBERSECURITY</span></div><div class="wp-card-copy"><h3 id="wp-card-headline">Article headline</h3><p>CYBERPULSE NEWS · FEATURED PHOTO PREVIEW</p></div></div>
     <p id="banner-preview-title" class="banner-caption"></p>
-    <p class="banner-warning">This is a crop preview, not a new image. Download the original and crop in WordPress. Verify the source licence and whether the image truly depicts the company/event.</p>
-    <div class="banner-actions"><button id="banner-download" class="button button-primary" type="button">Download original ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
+    <p class="banner-warning">Export creates 1200×800 JPG (card) or 1200×675 JPG (featured banner) if the host allows browser image access. The preview is illustrative; verify the original source, licensing and whether the image depicts this story before publishing. If image export is blocked, download the original and crop in WordPress.</p>
+    <div class="banner-actions"><button id="download-crop" class="button button-primary" type="button">↓ Export WordPress JPG</button><button id="banner-download" class="button button-quiet" type="button">Original download ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="./analysis.js"></script>
   <script src="./relevance.js"></script>
+  <script src="./newsroom.js"></script>
+  <script src="./pixelqa.js"></script>
   <script src="./vision.js"></script>
   <script src="./app.js"></script>
 </body>

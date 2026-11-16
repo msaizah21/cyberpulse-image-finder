@@ -1,4 +1,4 @@
-/* CyberPulse Studio v5 — dependable, free/no-key editorial image discovery.
+/* CyberPulse Newsroom v6 — dependable, free/no-key editorial image discovery.
  * Fetches Openverse and Wikimedia Commons independently with real pagination.
  * Optional CLIP scans pixels; search never relies on the vision model. */
 (() => {
@@ -9,7 +9,7 @@
   const licenseFilter=$('license-filter'), matchFilter=$('match-filter');
   const sourceFilter=$('source-filter'), sortFilter=$('sort-filter');
   const $more=$('load-more'), $deep=$('deep-search'), toastEl=$('toast');
-  let analysis=null, currentQuery='', activeQuery='', batch=0, pendingController=null;
+  let analysis=null, currentQuery='', activeQuery='', batch=0, pendingController=null, activeMode='context', cropMode='card';
   let allImages=[], seen=new Set(), selectedItem=null, onlySaved=false, pending=false, deepPending=false, visionPending=false, toastTimer;
   const favoriteKey='cyberpulse-stock-favorites-v3';
   let favorites={};
@@ -59,13 +59,23 @@
     $('confidence-pill').textContent=result.confidence;
     $('secondary-categories').replaceChildren();
     (result.other.length?result.other:['No strong alternative']).forEach(x=>$('secondary-categories').appendChild(txt('span','category-chip',x)));
+    activeMode=result.recommendedMode;
     headlineSuggestions();
-    renderChips('query-chips',result.stockSearches||[]);renderChips('more-chips',(result.stockSearches||[]).slice(1));
-    const q=result.stockSearches?.[0]||result.primaryQuery;
+    renderChips('query-chips',result.searchModes?.[activeMode]||result.stockSearches||[]);renderChips('more-chips',(result.stockSearches||[]).slice(1));
+    const q=result.primaryQuery||result.stockSearches?.[0];
     queryInput.value=q;
+    $('visual-context-title').textContent=`${result.angle} · ${result.visualSubject}`;
     $('visual-context-copy').textContent=result.entity
-      ?`Article mentions ${result.entity}. Searching photographs linked to the subject, not falsely labelled photos of the company or incident.`
-      :'Searching relevant photographs from two free image libraries. Every score is an editorial estimate.';
+      ?`Prioritising photos that fit this ${result.entity} story, with real settings and technology as alternatives.`
+      :'Prioritising real-world scenes rather than generic lock and hacker pictures.';
+    $('newsroom-angle').textContent=`Angle: ${result.angle}`;
+    $('newsroom-subject').textContent=`Subject: ${result.visualSubject}`;
+    $('editorial-warning').textContent=result.editorialWarning;
+    $('headline-source-note').textContent=result.headlineSource+' · Check every fact before publishing.';
+    activeMode=result.recommendedMode;
+    document.querySelectorAll('[data-photo-mode]').forEach(el=>{
+      const yes=el.dataset.photoMode===activeMode;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));
+    });
     updateLinks();
   }
   function isPublicLicense(raw){const s=String(raw||'').toLowerCase();return /cc0|public.?domain|\bpdm\b|^pd$/.test(s);}
@@ -145,7 +155,9 @@
     if(!['Openverse','Wikimedia Commons'].includes(item.source))return false;
     if(item.kind==='illustration'||/svg|gif/i.test(item.mime||''))return false;
     const details=`${item.title} ${item.tags||''}`;
-    if(graphicTerms.test(details))return false;
+    // Photographs of a sign or phone displaying a brand logo can be good news photos.
+    // Block standalone logo files, but do not block every photograph mentioning a logo.
+    if(graphicTerms.test(details)||/^(?:official\s+|company\s+)?(?:logo|logotype|emblem)(?:\s+of|\s+for|[:.\s]|$)/i.test(item.title))return false;
     // Prefer professional-quality wide photography, but do not discard valid editorial photos.
     // A low-resolution image is still a visible choice, clearly identified on its card.
     return acceptedLicense(item);
@@ -153,7 +165,7 @@
   function rated(item,query){
     const base=window.CyberPulseRelevance.estimate(item,query,analysis);
     const visual=item.vision;
-    if(visual) return {...item,match:{...base,score:window.CyberPulseVision.combineScore(base.score,visual.affinity),tier:'Metadata + image AI estimate',reason:`Photo-pixel visual affinity ${visual.affinity}% (relative to compared concepts); ${base.reason.toLowerCase()}`}};
+    if(visual) return {...item,match:{...base,score:window.CyberPulseVision.combineScore(base.score,visual.affinity),tier:'Pixel AI reviewed',reason:`CLIP relative visual match ${visual.affinity}% (photo pixels inspected); ${base.reason.toLowerCase()}`}};
     return {...item,match:base};
   }
   function updateSavedCount(){$('saved-count').textContent=Object.keys(favorites).length;}
@@ -172,6 +184,7 @@
     const minMatch=Number(matchFilter.value)||0;
     const filtered=data.filter(x=>x.match.score>=minMatch&&(sourceFilter.value==='all'||x.source===sourceFilter.value)&&acceptedLicense(x));
     filtered.sort((a,b)=>sortFilter.value==='resolution'?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
+      sortFilter.value==='visual'?(Number(!!b.vision)-Number(!!a.vision))||(b.match.score-a.match.score):
       (b.match.score-a.match.score)||(b.width*b.height-a.width*a.height));
     if(filtered.length){grid.replaceChildren(...filtered.map(renderCard));show(grid,true);show(state,false);}
     else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
@@ -193,12 +206,12 @@
     currentQuery=query;queryInput.value=query;updateLinks();
     pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
     const next=batch+1;
-    const choices=[...new Set([query,...(analysis.stockSearches||[]),...(analysis.editorialSearches||[])].map(short).filter(Boolean))].slice(0,8);
-    // Four actual pages per phrase, then rotate to a different article-related phrase.
-    // Once all phrases are explored, return to those phrases at later pages.
-    const block=Math.floor((next-1)/4);
+    const choices=[...new Set([query,...(analysis.searchModes?.[activeMode]||[]),...(analysis.stockSearches||[]),...(analysis.editorialSearches||[])].map(short).filter(Boolean))].slice(0,12);
+    // Two distinct pages per phrase, then rotate to the next story-specific direction.
+    // This avoids repeatedly showing one stale/unrelated topic on Refresh.
+    const block=Math.floor((next-1)/2);
     const phrase=choices[block%choices.length];
-    const page=(Math.floor(block/choices.length)*4)+(next-1)%4+1;
+    const page=(Math.floor(block/choices.length)*2)+(next-1)%2+1;
     const jobs=sourceJobs(phrase,page,pendingNow.signal);
     try{
       const settled=await Promise.allSettled(jobs.map(job=>job.promise));
@@ -211,7 +224,7 @@
       // On the first empty batch try a short, broader article topic once, automatically.
       // This recovers from extremely specific headlines without forcing the editor to retry.
       if(next===1&&!collected.some(isPhoto)&&!pendingNow.signal.aborted){
-        const fallback=short([...(analysis?.stockSearches||[]),...(analysis?.editorialSearches||[]),analysis?.topic,'cybersecurity computers'].find(term=>term&&short(term).toLowerCase()!==phrase.toLowerCase())||'cybersecurity computers');
+        const fallback=short([...(analysis?.searchModes?.context||[]),...(analysis?.searchModes?.concept||[]),...(analysis?.editorialSearches||[]),analysis?.topic,'cybersecurity computers'].find(term=>term&&short(term).toLowerCase()!==phrase.toLowerCase())||'cybersecurity computers');
         if(fallback&&fallback.toLowerCase()!==phrase.toLowerCase()){
           const retry=await Promise.allSettled(sourceJobs(fallback,1,pendingNow.signal).map(job=>job.promise));
           if(pendingNow.signal.aborted)return;
@@ -317,10 +330,80 @@
       toast('Direct download unavailable. Opened the photographer source instead.');}
   }
   function openPreview(item){
-    selectedItem=item;$('banner-preview-image').src=item.imageUrl;
-    $('banner-preview-title').textContent=`${item.match.score}% estimated match · ${item.width||'?'} × ${item.height||'?'} · ${item.source}`;
+    selectedItem=item;$('banner-preview-image').src=item.thumbnail||item.imageUrl;
+    $('wp-card-category').textContent=analysis?.primary||'CYBERSECURITY';
+    $('wp-card-headline').textContent=titleInput.value||analysis?.titleSuggestions?.[0]||analysis?.inferredTitle||'Article headline';
+    setCrop('card');
+    $('banner-preview-title').textContent=`${item.match.score}% estimated ${item.vision?'metadata + CLIP':'metadata'} match · ${item.width||'?'} × ${item.height||'?'} · ${item.source}`;
     $('banner-original').href=item.sourceUrl;
     const d=$('banner-dialog');if(typeof d.showModal==='function')d.showModal();else toast('Your browser does not support the banner preview.');
+  }
+  async function exportWordPressCrop(item){
+    const button=$('download-crop');button.disabled=true;button.textContent='Preparing image…';
+    try{
+      // Never process a tiny thumbnail for final publication when original exists.
+      const response=await fetch(item.imageUrl,{mode:'cors'});
+      if(!response.ok)throw Error('Original image cannot be downloaded');
+      const blob=await response.blob();
+      if(!blob.type.startsWith('image/')||blob.size>30*1024*1024)throw Error('Image file is unsupported or too large');
+      const bitmap=await createImageBitmap(blob);
+      const w=1200,h=cropMode==='card'?800:675;
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas is unavailable');
+      const scale=Math.max(w/bitmap.width,h/bitmap.height);
+      const sw=w/scale,sh=h/scale;
+      ctx.drawImage(bitmap,(bitmap.width-sw)/2,(bitmap.height-sh)/2,sw,sh,0,0,w,h);
+      if(typeof bitmap.close==='function')bitmap.close();
+      const result=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.91));
+      if(!result)throw Error('Browser cannot export JPG');
+      const url=URL.createObjectURL(result);const link=document.createElement('a');
+      link.download=`cyberpulse-${slug(titleInput.value||analysis?.titleSuggestions?.[0]||'article')}-${w}x${h}.jpg`;
+      link.href=url;document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),15000);
+      toast(`WordPress-ready ${w}×${h} JPG exported. Check original licence and attribution.`);
+    }catch(err){
+      toast('This photo host blocks export. Use Original download and crop it in WordPress.');
+      console.info('Crop export blocked:',err.message);
+    }finally{button.disabled=false;button.textContent='↓ Export WordPress JPG';}
+  }
+  function setCrop(mode){
+    cropMode=mode;
+    $('wp-card-frame').classList.toggle('crop-wide',mode==='feature');
+    $('crop-card').classList.toggle('active',mode==='card');
+    $('crop-feature').classList.toggle('active',mode==='feature');
+  }
+  function copyText(value,message){
+    (async()=>{try{await navigator.clipboard.writeText(value);toast(message);}catch{
+      const field=txt('textarea','',value);document.body.appendChild(field);field.select();document.execCommand('copy');field.remove();toast(message);
+    }})();
+  }
+  function copyBrief(){
+    if(!analysis)return toast('Analyse an article first.');
+    const text=[
+      'CYBERPULSE EDITORIAL IMAGE BRIEF',
+      `Headline: ${titleInput.value||analysis.titleSuggestions?.[0]||'Needs editorial confirmation'}`,
+      `Suggested category: ${analysis.primary}`,
+      `Story angle: ${analysis.angle}`,
+      `Named subject: ${analysis.visualSubject}`,
+      `Image direction: ${analysis.searchModeNames[activeMode]}`,
+      `Search ideas: ${(analysis.searchModes[activeMode]||[]).slice(0,4).join(' | ')}`,
+      `Editorial caution: ${analysis.editorialWarning}`,
+      'Use as an illustrative featured image unless the source confirms exact event context.',
+      'Recommended preview: CyberPulse card crop 3:2; featured banner 16:9.'
+    ].join('\n');
+    copyText(text,'Newsroom brief copied.');
+  }
+  function copyWordPressDetails(item){
+    const text=[
+      `Article: ${titleInput.value||analysis?.titleSuggestions?.[0]||'Check headline'}`,
+      `Category suggestion: ${analysis?.primary||'Needs review'}`,
+      `Image alt text (verify before using): ${item.title}`,
+      `Photo credit: ${item.creator}`,
+      `Licence: ${item.license} — ${item.licenseUrl||'See original'}`,
+      `Image source: ${item.sourceUrl}`,
+      'Image is illustrative unless its original metadata proves it depicts the stated news event.'
+    ].join('\n');
+    copyText(text,'WordPress image details copied.');
   }
   function renderCard(item){
     const card=txt('article','image-card');
@@ -335,7 +418,7 @@
     thumb.append(photo,fallback,badges,fav);
     const info=txt('div','image-body');
     const scoreBox=txt('div','match-row');
-    const left=txt('div','match-heading');left.append(txt('span','score-number',`${item.match.score}%`),txt('span','score-label','ARTICLE MATCH · ESTIMATE'));
+    const left=txt('div','match-heading');left.append(txt('span','score-number',`${item.match.score}%`),txt('span','score-label',item.vision?'ESTIMATE · AI PIXELS CHECKED':'ARTICLE MATCH · METADATA ESTIMATE'));
     const tier=txt('span',`score-tier ${item.match.score>=75?'score-strong':item.match.score>=55?'score-good':'score-review'}`,item.match.tier);
     scoreBox.append(left,tier);info.appendChild(scoreBox);
     const progress=txt('div','score-bar');const fill=txt('span','score-fill');fill.style.width=`${item.match.score}%`;progress.appendChild(fill);info.appendChild(progress);
@@ -343,6 +426,18 @@
     const breakdown=txt('div','score-breakdown');
     breakdown.append(txt('span','',`Topic ${item.match.topic}/70`),txt('span','',`Quality ${item.match.quality}/20`),txt('span','',`Banner ${item.match.banner}/10`));
     info.appendChild(breakdown);
+    const pixelNote=txt('div','pixel-qa','PIXEL QUALITY: checking preview if host allows…');
+    pixelNote.title='Local canvas brightness, contrast and crop diagnostic. Not semantic AI.';
+    info.appendChild(pixelNote);
+    if(!item.pixelQA && !item.pixelQAFailed && window.CyberPulsePixelQA && item.thumbnail){
+      window.CyberPulsePixelQA.check(item.thumbnail).then(qa=>{
+        item.pixelQA=qa;
+        if(pixelNote.isConnected)pixelNote.textContent=`PIXEL QA · ${qa.summary} · ${qa.width}×${qa.height}`;
+      }).catch(()=>{item.pixelQAFailed=true;
+        if(pixelNote.isConnected)pixelNote.textContent='PIXEL QA: photo host does not allow inspection · gallery unaffected';
+      });
+    }else if(item.pixelQA)pixelNote.textContent=`PIXEL QA · ${item.pixelQA.summary} · ${item.pixelQA.width}×${item.pixelQA.height}`;
+    else if(item.pixelQAFailed)pixelNote.textContent='PIXEL QA unavailable (photo host restriction)';
     if(item.vision){
       const v=txt('div','vision-result');v.append(txt('strong','',`✦ Vision AI: ${item.vision.affinity}% visual affinity`),
         txt('small','',`Image pixels compared locally with relevant and unrelated photo concepts. Combined match rating uses 60% metadata + 40% image vision. Not a statistical probability.`));info.appendChild(v);
@@ -356,26 +451,27 @@
     caption.append(txt('span','',`${item.license||'Check licence'} · verify usage rights`));
     if(item.licenseUrl){const link=txt('a','',' Terms ↗');link.href=item.licenseUrl;link.target='_blank';link.rel='noopener noreferrer';caption.append(link);}info.appendChild(caption);
     const actions=txt('div','card-actions');
-    const preview=txt('button','card-button primary','▧ Preview 16:9');preview.type='button';preview.addEventListener('click',()=>openPreview(item));
+    const preview=txt('button','card-button primary','▧ WordPress preview');preview.type='button';preview.addEventListener('click',()=>openPreview(item));
     const download=txt('button','card-button','↓ Download');download.type='button';download.addEventListener('click',()=>downloadImage(item));
     actions.append(preview,download);info.append(actions);
     const footer=txt('div','source-foot'),source=txt('a','','Photo source & licence ↗');
     source.href=item.sourceUrl;source.target='_blank';source.rel='noopener noreferrer';
     const copy=txt('button','card-button','Copy credit');copy.type='button';copy.addEventListener('click',()=>copyCredit(item));
-    footer.append(source,copy);info.append(footer);card.append(thumb,info);return card;
+    const wp=txt('button','card-button','Copy WP details');wp.type='button';wp.addEventListener('click',()=>copyWordPressDetails(item));
+    footer.append(source,copy,wp);info.append(footer);card.append(thumb,info);return card;
   }
   function analyseNow(){
     const title=titleInput.value.trim(),body=bodyInput.value.trim();
     if((title+' '+body).trim().length<12){toast('Add article text or a headline first.');bodyInput.focus();return;}
     try{
-      analysis=window.CyberPulseAnalyzer.analyseArticle(title,body);
+      analysis=window.CyberPulseNewsroom.enhance(window.CyberPulseAnalyzer.analyseArticle(title,body),title,body);
       renderAnalysis(analysis);onlySaved=false;$('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
-      startNewSearch(analysis.stockSearches?.[0]||analysis.primaryQuery);
+      startNewSearch(analysis.primaryQuery||analysis.stockSearches?.[0]);
     }catch(err){console.error(err);resetState('Article analysis failed','Check that analysis.js and relevance.js are present.',true);}
   }
   function count(){$('char-count').textContent=`${formatNum(titleInput.value.length+bodyInput.value.length)} characters`;}
   function clear(){
-    pendingController?.abort();setPending(false);analysis=null;currentQuery='';activeQuery='';batch=0;allImages=[];seen=new Set();onlySaved=false;
+    pendingController?.abort();setPending(false);analysis=null;currentQuery='';activeQuery='';activeMode='context';batch=0;allImages=[];seen=new Set();onlySaved=false;
     form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';licenseFilter.value='all';count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);
     show($('results-controls'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
@@ -389,6 +485,21 @@
   $more.addEventListener('click',()=>runSearch(activeQuery||queryInput.value,{append:true}));
   $deep.addEventListener('click',deepSearch);
   $('scan-top').addEventListener('click',scanTop);
+  document.querySelectorAll('[data-photo-mode]').forEach(button=>button.addEventListener('click',()=>{
+    if(!analysis)return;
+    const mode=button.dataset.photoMode;
+    if(activeMode===mode)return;
+    activeMode=mode;
+    document.querySelectorAll('[data-photo-mode]').forEach(el=>{
+      const yes=el.dataset.photoMode===mode;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));
+    });
+    const phrases=analysis.searchModes[mode]||[];
+    renderChips('query-chips',phrases);
+    if(phrases.length)startNewSearch(phrases[0]);
+  }));
+  $('copy-brief').addEventListener('click',copyBrief);
+  $('crop-card').addEventListener('click',()=>setCrop('card'));
+  $('crop-feature').addEventListener('click',()=>setCrop('feature'));
   $('vision-upload').addEventListener('change',e=>scanUploadedFile(e.target.files?.[0]));
   $('saved-toggle').addEventListener('click',toggleSaved);
   [matchFilter,sourceFilter,sortFilter,licenseFilter].forEach(el=>el.addEventListener('change',renderGrid));
@@ -396,6 +507,7 @@
   $('close-banner').addEventListener('click',()=>$('banner-dialog').close());
   bodyInput.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyseNow();}});
   $('banner-download').addEventListener('click',()=>{if(selectedItem)downloadImage(selectedItem);});
+  $('download-crop').addEventListener('click',()=>{if(selectedItem)exportWordPressCrop(selectedItem);});
   titleInput.addEventListener('input',count);bodyInput.addEventListener('input',count);
   $('category-list').replaceChildren(...window.CyberPulseAnalyzer.categories.map(x=>txt('span','',x.name)));
   updateSavedCount();count();
