@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080e1d">
   <meta name="description" content="CyberPulse Pro: find editorial photos, suggest article headlines and estimate banner relevance without an API key.">
-  <title>CyberPulse Newsroom | Article Intelligence + Image Studio</title>
+  <title>CyberPulse Prime Research | Learning Newsroom</title>
   <link rel="icon" href="./favicon.png" type="image/png">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -109,7 +109,7 @@
         <div class="results-top-actions" id="results-top-actions" hidden>
           <button id="top-refresh-search" type="button" class="button button-primary button-fresh"><span aria-hidden="true">↻</span> REFRESH — NEW STORY PHOTOS</button>
           <button id="top-load-more" type="button" class="button button-quiet">＋ More results</button>
-          <button id="top-deep-search" type="button" class="button button-quiet">✦ Deep search</button>
+          <button id="top-deep-search" type="button" class="button button-prime">✦ PRIME DEEP RESEARCH</button>
         </div>
         <div class="results-controls" id="results-controls" hidden>
           <label for="story-filter">Relevance</label><select id="story-filter"><option value="focused">Closest to article</option><option value="all">Show all options</option></select>
@@ -120,13 +120,36 @@
           <button id="saved-toggle" type="button" class="saved-toggle" aria-pressed="false">☆ Saved <span id="saved-count">0</span></button>
         </div>
       </div>
+      <section class="learning-panel" id="learning-panel" aria-labelledby="learning-title">
+        <div class="learning-head">
+          <div class="learning-title-group"><span class="learning-symbol" aria-hidden="true">✦</span><div><span class="step-label">V11 / EDITORIAL PREFERENCE LEARNING</span><h3 id="learning-title">Improve future banners with your editorial feedback</h3><p>Mark the right banner or reject a weak photo. Future related stories rank better, while article relevance always comes first.</p></div></div>
+          <label class="learning-switch"><input id="learning-enabled" type="checkbox" checked><span>Use learned ranking</span></label>
+        </div>
+        <div class="learning-bottom">
+          <div class="learning-stat"><strong id="learn-used">0</strong><span>Banners selected</span></div>
+          <div class="learning-stat"><strong id="learn-picked">0</strong><span>Good photos marked</span></div>
+          <div class="learning-stat"><strong id="learn-rejected">0</strong><span>Photos rejected</span></div>
+          <p id="learning-status" role="status">Learning starts after your first editorial choice. Your full article is never stored here.</p>
+        </div>
+        <div class="learning-actions">
+          <label class="learning-show-rejected"><input id="show-rejected" type="checkbox"> Show rejected photos</label>
+          <button id="learn-export" class="button button-quiet" type="button">↓ Export team learning</button>
+          <label class="button button-quiet learning-import" for="learn-import">↑ Import team learning<input id="learn-import" type="file" accept="application/json,.json" hidden></label>
+          <button id="learn-reset" class="button button-quiet learn-danger" type="button">Reset learning</button>
+        </div>
+        <p class="learning-footnote">Local browser preference learning—not autonomous AI model training. No automatic team syncing; export/import the JSON to share preferences across browsers. Metadata-based learning cannot verify photo contents or rights.</p>
+      </section>
+      <section id="prime-status-box" class="prime-status" aria-live="polite" hidden>
+        <div class="prime-status-heading"><span class="prime-symbol">✦</span><div><strong id="prime-status-title">Prime Research checks article fit automatically</strong><p id="prime-status-copy">Comparing named subjects and editorial contexts before suggesting banners.</p></div></div>
+        <div id="prime-search-log" class="prime-search-log" aria-label="Research search directions"></div>
+      </section>
       <div class="search-progress" id="search-progress" role="status" aria-live="polite" hidden><span class="search-pulse" aria-hidden="true"></span><span id="search-progress-text">Finding article-matched editorial photographs…</span></div>
       <div class="curation-notice" id="curation-notice" hidden></div>
       <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to see relevant photos with a match rating and original source.</p></div>
-      <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match % is an estimated ranking, not a factual probability.</strong> Before Vision AI, it uses image metadata, subject keywords, resolution and crop. An AI-verified badge appears only after CLIP has actually inspected the image pixels. Always verify what the photograph depicts and its licence.</div>
-      <section id="editor-shortlist" class="editor-shortlist" hidden aria-labelledby="shortlist-title"><div class="shortlist-heading"><div><span class="step-label">NEWSROOM SELECTION</span><h3 id="shortlist-title">Closest available banner options</h3></div><p id="shortlist-note">These are suggestions, not confirmed photos of the reported incident.</p></div><div id="shortlist-cards" class="shortlist-cards"></div></section>
+      <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match % stays separate from personal preferences.</strong> The learning engine only reorders eligible images within story-fit groups; it never changes this estimate. <strong>Article Match % is an estimated ranking, not a factual probability.</strong> Before Vision AI, it uses image metadata, subject keywords, resolution and crop. An AI-verified badge appears only after CLIP has actually inspected the image pixels. Always verify what the photograph depicts and its licence.</div>
+      <section id="editor-shortlist" class="editor-shortlist" hidden aria-labelledby="shortlist-title"><div class="shortlist-heading"><div><span class="step-label">PRIME RESEARCH / BEST THREE</span><h3 id="shortlist-title">Best available banner options</h3></div><p id="shortlist-note">These are suggestions, not confirmed photos of the reported incident.</p></div><div id="shortlist-cards" class="shortlist-cards"></div></section>
       <div id="image-grid" class="image-grid" hidden></div>
-      <div id="load-more-wrap" class="load-more-wrap" hidden><button id="load-more" type="button" class="button button-primary">↻ Find more photos</button><button id="deep-search" type="button" class="button button-quiet">✦ Deep search · 3 batches</button><span id="load-more-status">Each click searches the next photo batch and avoids previously shown images.</span></div>
+      <div id="load-more-wrap" class="load-more-wrap" hidden><button id="load-more" type="button" class="button button-primary">↻ Find more photos</button><button id="deep-search" type="button" class="button button-prime">✦ Prime Deep Research</button><span id="load-more-status">Each click searches the next photo batch and avoids previously shown images.</span></div>
       <div class="vision-panel panel" id="vision-panel" hidden>
         <div class="vision-top"><div><span class="step-label">FREE / OPT-IN IMAGE VISION</span><h3>Check actual image pixels against this news story.</h3><p>Run an open-source CLIP image model locally in your browser to compare real photo pixels with article concepts. No paid vision API key. First use downloads model files (potentially hundreds of MB), which may take time and use significant memory.</p></div><span class="vision-tag">PRIVATE ON-DEVICE AI</span></div>
         <div class="vision-actions"><button id="scan-top" class="button button-primary" type="button">✦ Vision AI: check top 3 photos</button><label class="upload-label" for="vision-upload">⌁ Upload photo to scan<input id="vision-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
@@ -166,7 +189,7 @@
     <div id="wp-card-frame" class="wp-card-frame"><div class="banner-preview-frame"><img id="banner-preview-image" alt="Article image crop preview"><span id="wp-card-category" class="wp-card-category">CYBERSECURITY</span></div><div class="wp-card-copy"><h3 id="wp-card-headline">Article headline</h3><p>CYBERPULSE NEWS · FEATURED PHOTO PREVIEW</p></div></div>
     <p id="banner-preview-title" class="banner-caption"></p>
     <p class="banner-warning">Export creates 1200×800 JPG (card) or 1200×675 JPG (featured banner) if the host allows browser image access. The preview is illustrative; verify the original source, licensing and whether the image depicts this story before publishing. If image export is blocked, download the original and crop in WordPress.</p>
-    <div class="banner-actions"><button id="download-crop" class="button button-primary" type="button">↓ Export WordPress JPG</button><button id="banner-download" class="button button-quiet" type="button">Original download ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
+    <div class="banner-actions"><button id="banner-mark-used" class="button button-prime" type="button">✓ Selected for WordPress</button><button id="download-crop" class="button button-primary" type="button">↓ Export WordPress JPG</button><button id="banner-download" class="button button-quiet" type="button">Original download ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="./analysis.js"></script>
@@ -176,6 +199,8 @@
   <script src="./newsroom.js"></script>
   <script src="./pixelqa.js"></script>
   <script src="./vision.js"></script>
+  <script src="./learning.js"></script>
+  <script src="./prime.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

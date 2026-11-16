@@ -15,6 +15,12 @@
   const $progress=$('search-progress'), $progressText=$('search-progress-text'), $notice=$('curation-notice');
   let lastNewCount=0, lastFreshBatch=0, lastRelevantNewCount=0;
   let shortlistIds=[];
+  let safeStorage=null;try{safeStorage=window.localStorage;}catch{/* ephemeral / restricted browser */}
+  const learner=window.CyberPulseLearning.create(safeStorage);
+  const prime=window.CyberPulsePrime;
+  const searchedPhrases=new Set(),searchedProviderQueries=new Set();
+  let researchRunning=false,autoResearchDone=false,rateLimitSeen=false;
+
   const favoriteKey='cyberpulse-stock-favorites-v3';
   let favorites={};
   try {favorites=JSON.parse(localStorage.getItem(favoriteKey)||'{}')||{};}catch{favorites={};}
@@ -30,6 +36,34 @@
   function toast(message){toastEl.textContent=message;toastEl.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('visible'),4000);}
   function progress(message,visible=true){if($progressText)$progressText.textContent=message;show($progress,visible);}
   function notice(message,visible=true){if($notice){$notice.textContent=message;show($notice,visible);}}
+  function primeStatus(title,copy,log=[],visible=true){
+    show($('prime-status-box'),visible);
+    if(!visible)return;
+    $('prime-status-title').textContent=title;
+    $('prime-status-copy').textContent=copy;
+    const logEl=$('prime-search-log');logEl.replaceChildren();
+    for(const q of log.slice(-6))logEl.append(txt('span','',q));
+  }
+  function preferencePoints(item){return learner.preference(item,analysis).points;}
+  function feedbackDecision(item){return analysis?learner.decision(item,analysis):'';}
+  function updateLearning(message){
+    const stats=learner.stats();
+    $('learn-used').textContent=String(stats.used);
+    $('learn-picked').textContent=String(stats.pick);
+    $('learn-rejected').textContent=String(stats.reject);
+    $('learning-enabled').checked=stats.enabled;
+    $('learning-status').textContent=message || (stats.total
+      ?`${stats.total} editorial choices saved in this browser · similar-story photo preferences now influence ranking (not Article Match %).`
+      :'No feedback yet. Choose Good photo, Not relevant, or Selected for WordPress to improve future similar-story results.');
+  }
+  function addFeedback(item,kind){
+    if(!analysis)return toast('Analyse the story first.');
+    const was=feedbackDecision(item);
+    if(was===kind){learner.undo(item,analysis);updateLearning('Editorial choice removed.');}
+    else {learner.add(item,analysis,kind);updateLearning(kind==='used'?'Banner selection saved for learning.':kind==='pick'?'Good image preference saved.':'This photo is marked Not relevant and hidden by default.');}
+    renderGrid();
+  }
+
   function resetState(title,description,error=false){
     state.classList.toggle('error',error);state.replaceChildren(txt('div','result-placeholder-icon',error?'!':'▧'),txt('h3','',title),txt('p','',description));
     show(state,true);show(grid,false);
@@ -98,20 +132,20 @@
   function renderShortlist(filtered){
     const el=$('editor-shortlist');shortlistIds=[];
     if(!analysis||onlySaved||!filtered.length){show(el,false);return;}
-    const eligible=filtered.filter(item=>item.match.score>=56 && item.editorialFit?.level!=='review' && item.editorialFit?.level!=='secondary').slice(0,3);
-    if(!eligible.length){show(el,false);return;}
-    shortlistIds=eligible.map(item=>item.id);
-    show(el,true);
-    $('shortlist-note').textContent=eligible.some(item=>item.editorialFit?.level==='direct')
-      ?'Prioritised by named subject, story metadata and banner layout; always verify the original photo.'
-      :'Contextual illustrations only. No clearly identified main-subject photo found yet.';
+    const result=prime.choose(filtered.filter(item=>feedbackDecision(item)!=='reject'),preferencePoints);
+    if(!result.items.length){show(el,false);return;}
+    shortlistIds=result.items.map(item=>item.id);show(el,true);
+    $('shortlist-title').textContent=result.headline;
+    $('shortlist-note').textContent=result.note;
+    $('shortlist-note').classList.toggle('shortlist-review-alert',result.type==='alternatives');
     const wrap=$('shortlist-cards');wrap.replaceChildren();
-    eligible.forEach((item,i)=>{
+    result.items.forEach((item,i)=>{
       const button=txt('button','shortlist-item');button.type='button';
       const img=document.createElement('img');img.src=item.thumbnail;img.alt=item.title;img.loading='lazy';
       const detail=txt('div','shortlist-item-detail');
-      detail.append(txt('span','shortlist-rank',`OPTION ${i+1} · ${item.match.score}% estimated`),
-        txt('strong','',item.title),txt('small','',item.editorialFit?.label||'Review source'));
+      const category=result.type==='strong'?'ARTICLE-ALIGNED':'REVIEW BEFORE PUBLISHING';
+      detail.append(txt('span','shortlist-rank',`OPTION ${i+1} · ${category} · ${item.match.score}% estimated`),
+        txt('strong','',item.title),txt('small','',`${item.editorialFit?.label||'Review photo'} · ${item.source}`));
       button.append(img,detail);button.addEventListener('click',()=>openPreview(item));wrap.append(button);
     });
   }
@@ -264,7 +298,8 @@
   function renderGrid(){
     const data=onlySaved?Object.values(favorites).map(x=>rated(x,currentQuery||analysis?.stockSearches?.[0]||'')):allImages;
     const minMatch=Number(matchFilter.value)||0;
-    const eligible=data.filter(x=>x.match.score>=minMatch&&(sourceFilter.value==='all'||x.source===sourceFilter.value)&&acceptedLicense(x));
+    const eligible=data.filter(x=>x.match.score>=minMatch&&(sourceFilter.value==='all'||x.source===sourceFilter.value)&&acceptedLicense(x)
+      &&($('show-rejected').checked||feedbackDecision(x)!=='reject'));
     const focused=eligible.filter(x=>x.editorialFit?.level==='direct'||x.editorialFit?.level==='context');
     const useFocus=storyFilter.value==='focused'&&!onlySaved;
     const filtered=useFocus&&focused.length?focused:eligible;
@@ -272,10 +307,17 @@
     else if(lastFreshBatch>1 && lastNewCount>0 && lastRelevantNewCount>0)notice(`${lastRelevantNewCount} article-aligned new photos out of ${lastNewCount} newly found. Fresh matching options appear first; earlier ones remain available.`);
     else if(lastFreshBatch>1 && lastNewCount>0)notice(`${lastNewCount} new photo candidates found, but none passed the article-specific metadata check. Existing good matches are preserved. Select “Show all options” to review them, or Refresh again.`);
     else notice('',false);
-    filtered.sort((a,b)=>sortFilter.value==='newest'?(b._batch-a._batch)||(b.match.score-a.match.score):sortFilter.value==='resolution' ?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
-      sortFilter.value==='visual'?(Number(!!b.vision)-Number(!!a.vision))||(b.match.score-a.match.score):
-      (b.match.score-a.match.score)||(b.width*b.height-a.width*a.height));
-    renderShortlist([...eligible].sort((a,b)=>b.match.score-a.match.score));
+    const fitRank={direct:4,context:3,secondary:1,review:0};
+    filtered.sort((a,b)=>{
+      // Article subject/context always outranks learned preferences.
+      const storyPriority=(fitRank[b.editorialFit?.level]||0)-(fitRank[a.editorialFit?.level]||0);
+      if(storyPriority)return storyPriority;
+      if(sortFilter.value==='newest'&&b._batch!==a._batch)return (b._batch||0)-(a._batch||0);
+      if(sortFilter.value==='resolution')return (b.width*b.height-a.width*a.height)||((b.match.score+preferencePoints(b))-(a.match.score+preferencePoints(a)));
+      if(sortFilter.value==='visual'&&Boolean(a.vision)!==Boolean(b.vision))return Number(!!b.vision)-Number(!!a.vision);
+      return (b.match.score+preferencePoints(b))-(a.match.score+preferencePoints(a)) || (b.width*b.height-a.width*a.height);
+    });
+    renderShortlist(eligible);
     if(filtered.length){grid.replaceChildren(...filtered.map(renderCard));show(grid,true);show(state,false);}
     else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
       onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try All rated, All sources and Eligible licences; then search again.');}
@@ -323,6 +365,7 @@ async function runSearch(q,{append=false}={}){
   if(!analysis){toast('Please analyse an article first.');return;}
   if(!append||query!==activeQuery){
     pendingController?.abort();activeQuery=query;batch=0;seen=new Set();allImages=[];lastNewCount=0;lastFreshBatch=0;lastRelevantNewCount=0;
+    searchedPhrases.clear();searchedProviderQueries.clear();autoResearchDone=false;rateLimitSeen=false;
     sortFilter.value='match';
     resetState('Finding photos for your story…','Searching real photo libraries across story-specific angles.');
     $('result-counter').textContent='';notice('',false);
@@ -331,24 +374,28 @@ async function runSearch(q,{append=false}={}){
   pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
   const next=batch+1;
   const planner=window.CyberPulseSearchPlan;
-  const selections=planner.batchPlan(analysis,activeMode,query,next);
+  const selections=planner.batchPlan(analysis,activeMode,query,next,learner);
   // Each click tries TWO different editorial directions, then up to two deeper alternatives if neither yields photos.
   const attempted=[];let newlyAdded=0;let unavailable=[];
   try{
     const trySelection=async(sel)=>{
       if(pendingNow.signal.aborted)return;
-      attempted.push(sel.phrase);
+      attempted.push(sel.phrase);searchedPhrases.add(sel.phrase.toLowerCase());
       progress(`Searching ${attempted.length}: ${sel.phrase} · source page ${sel.page}`);
       const names=['Openverse','Wikimedia Commons'];
       const jobs=names.map(source=>{
         const compact=planner.providerQuery(sel.phrase,source);
+        searchedProviderQueries.add(compact.toLowerCase());
         const work=source==='Openverse'?searchOpenverse(compact,sel.page,pendingNow.signal):searchCommons(compact,sel.page,pendingNow.signal);
         return {name:source,work};
       });
       const settled=await Promise.allSettled(jobs.map(x=>x.work));
       if(pendingNow.signal.aborted)return;
       settled.forEach((result,i)=>{
-        if(result.status!=='fulfilled'){if(!unavailable.includes(jobs[i].name))unavailable.push(jobs[i].name);return;}
+        if(result.status!=='fulfilled'){
+          if(String(result.reason?.message||result.reason||'').includes('429'))rateLimitSeen=true;
+          if(!unavailable.includes(jobs[i].name))unavailable.push(jobs[i].name);return;
+        }
         for(const item of result.value){
           if(!isPhoto(item))continue;
           const key=item.imageUrl||item.id;
@@ -360,9 +407,9 @@ async function runSearch(q,{append=false}={}){
     };
     for(const selection of selections)await trySelection(selection);
     const relevantNew=()=>allImages.filter(x=>x._batch===next&&(x.editorialFit?.level==='direct'||x.editorialFit?.level==='context')).length;
-    if(!relevantNew() && !pendingNow.signal.aborted){
+    if(!relevantNew() && !pendingNow.signal.aborted && !rateLimitSeen){
       // Search another related angle when the first directions have no clear story-specific results.
-      const fallback=planner.batchPlan(analysis,activeMode,query,next+1);
+      const fallback=planner.batchPlan(analysis,activeMode,query,next+1,learner);
       for(const selection of fallback){if(relevantNew()||pendingNow.signal.aborted)break;await trySelection(selection);}
     }
     if(pendingNow.signal.aborted)return;
@@ -391,18 +438,71 @@ async function runSearch(q,{append=false}={}){
     }
   }finally{if(!pendingNow.signal.aborted){setPending(false);renderGrid();}}
 }
-  function startNewSearch(q){if(pending){pendingController?.abort();setPending(false);}runSearch(q,{append:false});}
-  async function deepSearch(){
-    if(!analysis||pending||deepPending)return;
-    deepPending=true;
+  function startNewSearch(q){if(pending){pendingController?.abort();setPending(false);}return runSearch(q,{append:false});}
+  async function primeResearch({auto=false}={}){
+    if(!analysis||pending||researchRunning)return;
+    if(auto&&!prime.needsResearch(allImages))return;
+    if(rateLimitSeen){primeStatus('Research paused: image source rate limit','A provider has returned a rate limit. Your existing photos remain available. Try later or use the original library links.');return;}
+    const thisAnalysis=analysis;
+    const all=prime.plan(analysis,activeMode,activeQuery||queryInput.value,new Set([...searchedPhrases,...searchedProviderQueries]),learner);
+    const max=auto?3:6;const selections=all.slice(0,max);
+    if(!selections.length){primeStatus('All available article-search directions explored','No additional unique search ideas remain. Try another photo direction, or open the original sources below.');return;}
+    researchRunning=true;pendingController?.abort();const controller=new AbortController();pendingController=controller;
+    setPending(true);
+    const startCount=allImages.length,log=[];
+    let errors=0,added=0;const next=batch+1;
+    primeStatus(auto?'Prime Research automatically activated':'Prime Research · expanded investigation',
+      auto?'Your strongest photo options are weak. Searching related people, real locations and physical story context…':'Searching more specific real-world angles before ranking the top three…');
     try{
-      for(let n=0;n<3;n++) {
-        if(!analysis || !deepPending)break;
-        await runSearch(activeQuery||queryInput.value,{append:true});
+      for(const selection of selections){
+        if(controller.signal.aborted||analysis!==thisAnalysis)break;
+        const phrase=selection.phrase;
+        searchedPhrases.add(phrase.toLowerCase());searchedProviderQueries.add(window.CyberPulseSearchPlan.providerQuery(phrase,'Openverse').toLowerCase());log.push(phrase);
+        primeStatus('Prime Research · exploring story angles',`Searching ${log.length}/${selections.length} · ${phrase} · keeping older results`,log);
+        progress(`Prime research: ${phrase}`);
+        const jobs=sourceJobs(phrase,1,controller.signal);
+        const settled=await Promise.allSettled(jobs.map(job=>job.promise));
+        if(controller.signal.aborted||analysis!==thisAnalysis)break;
+        for(let i=0;i<settled.length;i++){
+          const result=settled[i];
+          if(result.status!=='fulfilled'){
+            errors++;
+            if(String(result.reason?.message||result.reason||'').includes('429'))rateLimitSeen=true;
+            continue;
+          }
+          for(const item of result.value){
+            if(!isPhoto(item))continue;
+            const key=item.imageUrl||item.id;
+            if(seen.has(key))continue;
+            seen.add(key);
+            allImages.push(rated({...item,_query:phrase,_batch:next},phrase));added++;
+          }
+        }
+        // Stop when there are three strong article-oriented choices; avoid needless API calls.
+        if(prime.choose(allImages,preferencePoints).verified>=3||rateLimitSeen)break;
       }
-      if(deepPending)toast(`Deep search complete. ${allImages.length} unique photo matches found.`);
-    }finally{deepPending=false;}
+      if(controller.signal.aborted||analysis!==thisAnalysis)return;
+      batch=next;lastNewCount=added;lastFreshBatch=next;
+      lastRelevantNewCount=allImages.filter(x=>x._batch===next&&['direct','context'].includes(x.editorialFit?.level)).length;
+      // Prime ranks best fit rather than repeatedly showing newest generic photos.
+      sortFilter.value='match';
+      const top=prime.choose(allImages,preferencePoints);
+      const status=top.type==='strong'?'Prime Research · article-aligned options found':top.items.length?'Prime Research · best available alternatives':'Prime Research · no suitable image found';
+      const message=top.type==='strong'?`${top.verified} promising article-aligned banner candidates found. Source verification remains essential.`:
+        `${allImages.length} total unique photos considered; no reliably close match confirmed. Alternatives are marked for review.`;
+      primeStatus(status,message,log);
+      progress(`${added} additional photos checked from ${log.length} article-specific searches. ${top.type==='strong'?'Top matches shortlisted.':'No misleading high scores assigned.'}${errors?' Some sources were unavailable.':''}`);
+      renderGrid();show($('more-search'),true);
+      if(!auto)toast(top.type==='strong'?'Prime Research completed: review the best three banners.':'Research completed. Showing best available alternatives, not guaranteed matches.');
+      if(rateLimitSeen)notice('An image provider returned a rate limit. Further searches may be temporarily unavailable; existing results are preserved.');
+    }catch(err){
+      if(!controller.signal.aborted){primeStatus('Prime Research interrupted','Image sources were unavailable; earlier results are preserved.',log);renderGrid();}
+    }finally{
+      researchRunning=false;
+      if(!controller.signal.aborted){setPending(false);renderGrid();}
+    }
   }
+  async function deepSearch(){return primeResearch({auto:false});}
   function visionStatus(message,error=false){const el=$('vision-status');el.textContent=message;el.classList.toggle('error',error);el.classList.toggle('working',visionPending&&!error);}
   async function scanPhoto(item){
     if(visionPending){toast('An AI scan is already running.');return;}
@@ -494,7 +594,8 @@ async function runSearch(q,{append=false}={}){
       link.download=`cyberpulse-${slug(titleInput.value||analysis?.titleSuggestions?.[0]||'article')}-${w}x${h}.jpg`;
       link.href=url;document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),15000);
-      toast(`WordPress-ready ${w}×${h} JPG exported. Check original licence and attribution.`);
+      if(analysis)addFeedback(item,'used');
+      toast(`WordPress-ready ${w}×${h} JPG exported. Selection saved; verify the photo licence.`);
     }catch(err){
       toast('This photo host blocks export. Use Original download and crop it in WordPress.');
       console.info('Crop export blocked:',err.message);
@@ -584,6 +685,17 @@ async function runSearch(q,{append=false}={}){
     }
     const scan=txt('button','vision-button',item.vision?'✦ Re-scan with free Vision AI':'✦ AI check actual photo pixels');scan.type='button';
     scan.disabled=visionPending;scan.addEventListener('click',()=>scanPhoto(item));info.appendChild(scan);
+    const mark=txt('div','feedback-row');
+    const decision=feedbackDecision(item);
+    const good=txt('button',decision==='pick'||decision==='used'?'feedback-selected':'','✓ Good for this article');
+    const bad=txt('button',`feedback-no${decision==='reject'?' feedback-rejected':''}`,'✕ Not relevant');
+    good.type=bad.type='button';good.addEventListener('click',()=>addFeedback(item,'pick'));
+    bad.addEventListener('click',()=>addFeedback(item,'reject'));
+    mark.append(good,bad);info.appendChild(mark);
+    const prefs=preferencePoints(item);
+    if(prefs)info.appendChild(txt('div',`learned-fit${prefs<0?' negative':''}`,
+      `Learning preference ${prefs>0?'+':''}${prefs} ranking points · article score unchanged`));
+    if(decision==='used')info.appendChild(txt('span','learn-selected-badge','✓ SELECTED FOR WORDPRESS'));
     info.appendChild(txt('h3','',item.title));
     const meta=txt('div','image-meta');meta.append(txt('span','',`By ${item.creator}`));
     if(item.width&&item.height)meta.append(txt('strong','',`${formatNum(item.width)} × ${formatNum(item.height)}`));info.appendChild(meta);
@@ -606,7 +718,14 @@ async function runSearch(q,{append=false}={}){
     try{
       analysis=window.CyberPulseNewsroom.enhance(window.CyberPulseAnalyzer.analyseArticle(title,body),title,body);
       renderAnalysis(analysis);onlySaved=false;$('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
-      startNewSearch(analysis.primaryQuery||analysis.stockSearches?.[0]);
+      const reference=analysis;
+      primeStatus('Article-aware research is ready','Checking initial results first. If close photos are missing, Prime Research will automatically explore three more targeted directions.',[],true);
+      startNewSearch(analysis.primaryQuery||analysis.stockSearches?.[0]).then(async()=>{
+        if(analysis!==reference||autoResearchDone)return;
+        autoResearchDone=true;
+        if(prime.needsResearch(allImages))await primeResearch({auto:true});
+        else primeStatus('Initial article matches available','You can still choose PRIME DEEP RESEARCH to explore more story-specific photographs.',[],true);
+      }).catch(()=>{if(analysis===reference)primeStatus('Research could not complete','Photo providers may be unavailable. Try Refresh or open the original photo libraries.');});
     }catch(err){console.error(err);resetState('Article analysis failed','Check that analysis.js and relevance.js are present.',true);}
   }
   function count(){$('char-count').textContent=`${formatNum(titleInput.value.length+bodyInput.value.length)} characters`;}
@@ -615,7 +734,8 @@ async function runSearch(q,{append=false}={}){
     form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';storyFilter.value='focused';licenseFilter.value='all';lastFreshBatch=0;lastNewCount=0;lastRelevantNewCount=0;progress('',false);notice('',false);count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);show($('editorial-intelligence'),false);show($('editor-shortlist'),false);
     show($('results-controls'),false);show($('results-top-actions'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
-    shortlistIds=[];grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
+    shortlistIds=[];searchedPhrases.clear();searchedProviderQueries.clear();researchRunning=false;autoResearchDone=false;rateLimitSeen=false;primeStatus('','',[],false);
+    grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
     $('result-counter').textContent='';$('results-subtitle').textContent='Find relevant free-licence photographs, ranked by estimated editorial suitability.';
     $('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
   }
@@ -648,11 +768,31 @@ async function runSearch(q,{append=false}={}){
   $('saved-toggle').addEventListener('click',toggleSaved);
   [matchFilter,sourceFilter,sortFilter,storyFilter,licenseFilter].forEach(el=>el.addEventListener('change',renderGrid));
   $('clear-button').addEventListener('click',clear);
+  $('banner-mark-used').addEventListener('click',()=>{if(selectedItem){addFeedback(selectedItem,'used');toast('Recorded as the selected WordPress banner.');}});
+  $('learning-enabled').addEventListener('change',e=>{learner.enable(e.target.checked);updateLearning();renderGrid();});
+  $('show-rejected').addEventListener('change',renderGrid);
+  $('learn-reset').addEventListener('click',()=>{if(window.confirm('Clear all saved learning choices in this browser?')){
+    learner.reset();updateLearning('Your local learning history was cleared.');renderGrid();
+  }});
+  $('learn-export').addEventListener('click',()=>{
+    const blob=new Blob([learner.exportProfile()],{type:'application/json'}),url=URL.createObjectURL(blob);
+    const link=document.createElement('a');link.href=url;link.download='cyberpulse-newsroom-team-learning.json';
+    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+    toast('Learning preferences exported. Share this JSON with the CyberWaze team to import.');
+  });
+  $('learn-import').addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    try{if(file.size>250000)throw Error('File is too large (max 250 KB)');
+      learner.importProfile(await file.text());updateLearning('Imported teammate preferences; article-fit ranking is still the priority.');renderGrid();
+      toast('Team learning imported successfully.');
+    }catch(err){toast(`Learning import failed: ${err.message}`);}
+    finally{e.target.value='';}
+  });
   $('close-banner').addEventListener('click',()=>$('banner-dialog').close());
   bodyInput.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyseNow();}});
   $('banner-download').addEventListener('click',()=>{if(selectedItem)downloadImage(selectedItem);});
   $('download-crop').addEventListener('click',()=>{if(selectedItem)exportWordPressCrop(selectedItem);});
   titleInput.addEventListener('input',count);bodyInput.addEventListener('input',count);
   $('category-list').replaceChildren(...window.CyberPulseAnalyzer.categories.map(x=>txt('span','',x.name)));
-  updateSavedCount();count();
+  updateSavedCount();updateLearning();count();
 })();

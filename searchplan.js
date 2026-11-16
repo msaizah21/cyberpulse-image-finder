@@ -40,8 +40,13 @@
    for(const q of base){const key=fingerprint(q);if(!used.has(key)){first.push(q);used.add(key);}else later.push(q);}
    return unique([...first,...later]).slice(0,24);
  }
- function batchPlan(analysis,mode,query,batch){
-   const phrases=prioritised(analysis,mode,query);
+ function batchPlan(analysis,mode,query,batch,learning){
+   const base=prioritised(analysis,mode,query);
+   // Keep the first article-directed search fixed; past positive/negative decisions
+   // can reorder remaining directions without changing the subject of the article.
+   const phrases=base.length>1&&learning?.phraseBoost?
+     [base[0],...base.slice(1).map((q,i)=>({q,i,boost:learning.phraseBoost(q,analysis)}))
+       .sort((a,b)=>b.boost-a.boost||a.i-b.i).map(x=>x.q)]:base;
    if(!phrases.length)return [];
    const n=Math.max(1,Number(batch)||1);
    const perBatch=2;
