@@ -121,3 +121,43 @@
 .results-top-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 6px;}
 .results-top-actions .button{white-space:nowrap;}
 @media (max-width: 900px){.results-top-actions{width:100%;justify-content:flex-start;}}
+
+
+/* v8 — story intelligence, actionable photo brief, top picks */
+.results-heading{align-items:flex-start;flex-wrap:wrap}
+.results-top-actions{flex:1 1 100%;margin:0;order:1}
+.results-controls{flex:1 1 100%;order:2;margin-top:8px}
+.intelligence-panel{padding:24px 25px;margin:0 0 25px;border-radius:15px;border:1px solid #315a70;background:linear-gradient(128deg,#111f35,#11283a 65%,#121e35)}
+.intelligence-top{display:flex;align-items:flex-start;justify-content:space-between;gap:22px}
+.intelligence-top h3{font-size:21px;margin:7px 0 8px;letter-spacing:-.45px}
+.intelligence-top p{font-size:12px;line-height:1.7;color:#b5cddf;max-width:860px;margin:0}
+.intelligence-top button{min-height:38px;font-size:11px;flex:none}
+.editorial-keyword-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:20px 0}
+.keyword-group{background:#0e1d30;border:1px solid #2e4b63;border-radius:10px;padding:13px}
+.keyword-group>strong{display:block;color:#8bded3;font-size:11px;margin-bottom:11px}
+.keyword-group-chips{display:flex;flex-wrap:wrap;gap:7px}
+.keyword-pill{font-size:10px;line-height:1.4;color:#bdcfe2;border:1px solid #3c526a;border-radius:7px;padding:6px 8px;background:#16283e}
+.keyword-pill.lead-keyword{background:#174348;border-color:#3f8282;color:#c6fff1}
+.focus-search{margin-top:9px;border-top:1px solid #29465c;padding-top:15px}
+.focus-search strong{font-size:12px;color:#e2ecf5;display:block;margin-bottom:10px}
+.story-search-chip{font-size:11px}
+.intelligence-disclaimer{font-size:10px;color:#94afc3;line-height:1.6;margin:14px 0 0}
+.editor-shortlist{border:1px solid #366875;border-radius:13px;background:#122a3b;padding:17px;margin:14px 0 22px}
+.shortlist-heading{display:flex;gap:15px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+.shortlist-heading h3{font-size:16px;margin:4px 0 0}
+.shortlist-heading p{font-size:10px;color:#a7bfcd;max-width:460px;margin:0}
+.shortlist-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.shortlist-item{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #36596a;border-radius:9px;background:#142f44;color:#e6f3fc;padding:7px;min-width:0;cursor:pointer}
+.shortlist-item:hover{background:#22475c;border-color:#73c7c3}
+.shortlist-item img{width:78px;height:66px;object-fit:cover;border-radius:6px;background:#20354a;flex:none}
+.shortlist-item-detail{min-width:0;display:flex;flex-direction:column;gap:3px}
+.shortlist-item-detail .shortlist-rank{font-size:9px;color:#85ebdb;font-weight:800}
+.shortlist-item-detail strong{font-size:11px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shortlist-item-detail small{font-size:10px;color:#a5b8cb}
+.shortlist-badge{background:#116d70;border:1px solid #5fe0d6;border-radius:6px;padding:6px 8px;font-size:10px;color:white}
+.editorial-fit-tag{font-size:10px;margin:0 0 10px;padding:7px 9px;border-radius:6px;background:#162b3c;color:#c6d6e5;border:1px solid #33485e;display:inline-flex;align-self:flex-start}
+.fit-direct{color:#a2ffde;border-color:#378973;background:#0f3934}
+.fit-context{color:#abd9f9;border-color:#4f769d}
+.fit-secondary,.fit-review{color:#ffdaaf;border-color:#97754c;background:#3b2c26}
+@media(max-width:850px){.shortlist-cards{grid-template-columns:1fr}.shortlist-item img{width:88px}}
+@media(max-width:660px){.intelligence-top,.shortlist-heading{flex-direction:column;align-items:flex-start}.intelligence-panel{padding:17px}.intelligence-top button{width:100%}.results-top-actions .button{flex:1 1 auto}}

@@ -12,6 +12,7 @@
   const $topRefresh=$('top-refresh-search'), $topMore=$('top-load-more'), $topDeep=$('top-deep-search');
   let analysis=null, currentQuery='', activeQuery='', batch=0, pendingController=null, activeMode='context', cropMode='card';
   let allImages=[], seen=new Set(), selectedItem=null, onlySaved=false, pending=false, deepPending=false, visionPending=false, toastTimer;
+  let shortlistIds=[];
   const favoriteKey='cyberpulse-stock-favorites-v3';
   let favorites={};
   try {favorites=JSON.parse(localStorage.getItem(favoriteKey)||'{}')||{};}catch{favorites={};}
@@ -51,6 +52,65 @@
       row.append(inner,use);wrap.appendChild(row);
     });
   }
+  function renderEditorialIntelligence(result){
+    const info=result.editorial;
+    if(!info){show($('editorial-intelligence'),false);return;}
+    show($('editorial-intelligence'),true);
+    $('editorial-summary').textContent=info.summary;
+    const groups=$('editorial-keyword-groups');groups.replaceChildren();
+    const sections=[['People',info.groups.people],['Organizations',info.groups.organizations],
+      ['Story & incident',info.groups.story],['Critical sectors',info.groups.sectors],
+      ['Policy & law',info.groups.policy]];
+    for(const [name,items] of sections){
+      if(!items?.length)continue;
+      const block=txt('div','keyword-group');block.appendChild(txt('strong','',name));
+      const chips=txt('div','keyword-group-chips');
+      for(const entry of items.slice(0,7)){
+        const chip=txt('span',entry.lead?'keyword-pill lead-keyword':'keyword-pill',entry.name);
+        chip.title=entry.lead?'Mentioned in article opening':'Mentioned later in the article';chips.append(chip);
+      }
+      block.append(chips);groups.append(block);
+    }
+    const container=$('editorial-search-plan');container.replaceChildren();
+    for(const phrase of (info.searchModes.editorial||[]).slice(0,6)){
+      const btn=txt('button','query-chip story-search-chip',phrase);btn.type='button';
+      btn.addEventListener('click',()=>{queryInput.value=phrase;startNewSearch(phrase);});container.append(btn);
+    }
+  }
+  function copyKeywordPlan(){
+    if(!analysis?.editorial){toast('Analyse an article to create keywords.');return;}
+    const ed=analysis.editorial;
+    const content=['CYBERPULSE — NEWSROOM IMAGE PLAN',
+      `Headline: ${titleInput.value||analysis.titleSuggestions?.[0]||'Review headline'}`,
+      `Category: ${analysis.primary}`,
+      `Main subject: ${(ed.mainSubjects||[]).join(' / ')||ed.mainStory}`,
+      `Story focus: ${ed.focus}`,
+      ...Object.entries(ed.groups).filter(([name,list])=>list.length).map(([name,list])=>`${name}: ${list.map(x=>x.name).join(', ')}`),
+      'Image searches:',...(ed.searchModes.editorial||[]).slice(0,8).map(x=>`- ${x}`),
+      `Editorial warning: ${ed.caution}`,
+      'Photo metadata matches do not prove that a photo documents the reported event. Check licensing.'].join('\n');
+    copyText(content,'Article image brief copied.');
+  }
+  function renderShortlist(filtered){
+    const el=$('editor-shortlist');shortlistIds=[];
+    if(!analysis||onlySaved||!filtered.length){show(el,false);return;}
+    const eligible=filtered.filter(item=>item.match.score>=56 && item.editorialFit?.level!=='review' && item.editorialFit?.level!=='secondary').slice(0,3);
+    if(!eligible.length){show(el,false);return;}
+    shortlistIds=eligible.map(item=>item.id);
+    show(el,true);
+    $('shortlist-note').textContent=eligible.some(item=>item.editorialFit?.level==='direct')
+      ?'Prioritised by named subject, story metadata and banner layout; always verify the original photo.'
+      :'Contextual illustrations only. No clearly identified main-subject photo found yet.';
+    const wrap=$('shortlist-cards');wrap.replaceChildren();
+    eligible.forEach((item,i)=>{
+      const button=txt('button','shortlist-item');button.type='button';
+      const img=document.createElement('img');img.src=item.thumbnail;img.alt=item.title;img.loading='lazy';
+      const detail=txt('div','shortlist-item-detail');
+      detail.append(txt('span','shortlist-rank',`OPTION ${i+1} · ${item.match.score}% estimated`),
+        txt('strong','',item.title),txt('small','',item.editorialFit?.label||'Review source'));
+      button.append(img,detail);button.addEventListener('click',()=>openPreview(item));wrap.append(button);
+    });
+  }
   function renderAnalysis(result){
     show($('analysis-empty'),false);show($('analysis-content'),true);show($('visual-intent'),true);show($('vision-panel'),true);
     show($('results-controls'),true);show($('rating-explainer'),true);show($('results-top-actions'),true);
@@ -66,9 +126,9 @@
     const q=result.primaryQuery||result.stockSearches?.[0];
     queryInput.value=q;
     $('visual-context-title').textContent=`${result.angle} · ${result.visualSubject}`;
-    $('visual-context-copy').textContent=result.entity
+    $('visual-context-copy').textContent=result.editorial?.summary || (result.entity
       ?`Prioritising photos that fit this ${result.entity} story, with real settings and technology as alternatives.`
-      :'Prioritising real-world scenes rather than generic lock and hacker pictures.';
+      :'Prioritising real-world scenes rather than generic lock and hacker pictures.');
     $('newsroom-angle').textContent=`Angle: ${result.angle}`;
     $('newsroom-subject').textContent=`Subject: ${result.visualSubject}`;
     $('editorial-warning').textContent=result.editorialWarning;
@@ -77,6 +137,7 @@
     document.querySelectorAll('[data-photo-mode]').forEach(el=>{
       const yes=el.dataset.photoMode===activeMode;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));
     });
+    renderEditorialIntelligence(result);
     updateLinks();
   }
   function isPublicLicense(raw){const s=String(raw||'').toLowerCase();return /cc0|public.?domain|\bpdm\b|^pd$/.test(s);}
@@ -164,10 +225,23 @@
     return acceptedLicense(item);
   }
   function rated(item,query){
-    const base=window.CyberPulseRelevance.estimate(item,query,analysis);
+    const raw=window.CyberPulseRelevance.estimate(item,query,analysis);
+    const editorialFit=window.CyberPulseEditorial?.evaluatePhoto(item,analysis)||null;
+    let score=raw.score;
+    if(editorialFit){
+      if(editorialFit.level==='direct')score=Math.min(99,score+17);
+      else if(editorialFit.level==='context')score=Math.min(82,score+5);
+      else if(editorialFit.level==='secondary')score=Math.min(53,score-18);
+      else score=Math.min(48,score-20);
+    }
     const visual=item.vision;
-    if(visual) return {...item,match:{...base,score:window.CyberPulseVision.combineScore(base.score,visual.affinity),tier:'Pixel AI reviewed',reason:`CLIP relative visual match ${visual.affinity}% (photo pixels inspected); ${base.reason.toLowerCase()}`}};
-    return {...item,match:base};
+    if(visual) score=window.CyberPulseVision.combineScore(score,visual.affinity);
+    // A pixel similarity result cannot establish that an image depicts a named incident.
+    if(editorialFit?.level==='review')score=Math.min(score,58);
+    if(editorialFit?.level==='secondary')score=Math.min(score,63);
+    const tier=score>=80?'Strong estimated relevance':score>=60?'Related visual':score>=40?'Illustrative — review':'Low story relevance';
+    const reason=editorialFit?.explanation||raw.reason;
+    return {...item,editorialFit,match:{...raw,score,tier,reason:visual?`${reason} · CLIP reviewed pixels (${visual.affinity}% relative similarity).`:reason}};
   }
   function updateSavedCount(){$('saved-count').textContent=Object.keys(favorites).length;}
   function saveFavorite(item){
@@ -187,6 +261,7 @@
     filtered.sort((a,b)=>sortFilter.value==='resolution'?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
       sortFilter.value==='visual'?(Number(!!b.vision)-Number(!!a.vision))||(b.match.score-a.match.score):
       (b.match.score-a.match.score)||(b.width*b.height-a.width*a.height));
+    renderShortlist(filtered);
     if(filtered.length){grid.replaceChildren(...filtered.map(renderCard));show(grid,true);show(state,false);}
     else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
       onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try All rated, All sources and Eligible licences; then search again.');}
@@ -417,6 +492,9 @@ function selectPhraseForBatch(query,next){
       `Image direction: ${analysis.searchModeNames[activeMode]}`,
       `Search ideas: ${(analysis.searchModes[activeMode]||[]).slice(0,4).join(' | ')}`,
       `Editorial caution: ${analysis.editorialWarning}`,
+      `Story intelligence: ${(analysis.editorial?.highlightedKeywords||[]).join(' | ')}`,
+      `Priority real-photo queries: ${(analysis.editorial?.searchModes.editorial||[]).slice(0,6).join(' | ')}`,
+      `Image suitability warning: ${analysis.editorial?.caution||'Verify photo evidence'}`, 
       'Use as an illustrative featured image unless the source confirms exact event context.',
       'Recommended preview: CyberPulse card crop 3:2; featured banner 16:9.'
     ].join('\n');
@@ -441,6 +519,7 @@ function selectPhraseForBatch(query,next){
     const fallback=txt('div','fallback','Image preview unavailable — view the photographer source');
     photo.addEventListener('error',()=>{if(!thumbnailRetried&&item.imageUrl!==photo.src){thumbnailRetried=true;photo.src=item.imageUrl;return;}photo.style.display='none';fallback.style.display='grid';});
     const badges=txt('div','image-badges');badges.append(txt('span','source-badge',item.source));
+    if(shortlistIds.includes(item.id))badges.append(txt('span','shortlist-badge',`Top pick #${shortlistIds.indexOf(item.id)+1}`));
     const fav=txt('button',`favorite-button${favorites[item.id]?' is-saved':''}`,favorites[item.id]?'★ Saved':'☆ Save');
     fav.type='button';fav.setAttribute('aria-label',favorites[item.id]?'Remove saved photo':'Save photo to browser');
     fav.addEventListener('click',()=>saveFavorite(item));
@@ -452,8 +531,9 @@ function selectPhraseForBatch(query,next){
     scoreBox.append(left,tier);info.appendChild(scoreBox);
     const progress=txt('div','score-bar');const fill=txt('span','score-fill');fill.style.width=`${item.match.score}%`;progress.appendChild(fill);info.appendChild(progress);
     info.appendChild(txt('p','score-reason',item.match.reason));
+    if(item.editorialFit)info.appendChild(txt('div',`editorial-fit-tag fit-${item.editorialFit.level}`,`● ${item.editorialFit.label}`));
     const breakdown=txt('div','score-breakdown');
-    breakdown.append(txt('span','',`Topic ${item.match.topic}/70`),txt('span','',`Quality ${item.match.quality}/20`),txt('span','',`Banner ${item.match.banner}/10`));
+    breakdown.append(txt('span','',`Topic clues ${item.match.topic}`),txt('span','',`Photo size ${item.match.quality}/20`),txt('span','',`Crop ${item.match.banner}/10`));
     info.appendChild(breakdown);
     const pixelNote=txt('div','pixel-qa','PIXEL QUALITY: checking preview if host allows…');
     pixelNote.title='Local canvas brightness, contrast and crop diagnostic. Not semantic AI.';
@@ -502,9 +582,9 @@ function selectPhraseForBatch(query,next){
   function clear(){
     pendingController?.abort();setPending(false);analysis=null;currentQuery='';activeQuery='';activeMode='context';batch=0;allImages=[];seen=new Set();onlySaved=false;
     form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';licenseFilter.value='all';count();
-    show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);
+    show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);show($('editorial-intelligence'),false);show($('editor-shortlist'),false);
     show($('results-controls'),false);show($('results-top-actions'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
-    grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
+    shortlistIds=[];grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
     $('result-counter').textContent='';$('results-subtitle').textContent='Find relevant free-licence photographs, ranked by estimated editorial suitability.';
     $('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
   }
@@ -530,6 +610,7 @@ function selectPhraseForBatch(query,next){
     if(phrases.length)startNewSearch(phrases[0]);
   }));
   $('copy-brief').addEventListener('click',copyBrief);
+  $('copy-keyword-plan').addEventListener('click',copyKeywordPlan);
   $('crop-card').addEventListener('click',()=>setCrop('card'));
   $('crop-feature').addEventListener('click',()=>setCrop('feature'));
   $('vision-upload').addEventListener('change',e=>scanUploadedFile(e.target.files?.[0]));

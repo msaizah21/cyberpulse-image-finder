@@ -1,81 +1,63 @@
-# CyberPulse Newsroom Image Studio — v6
+# CyberPulse Newsroom — Article Intelligence & Banner Studio (v8)
 
-**Designed for CyberPulse / CyberWaze's day-to-day WordPress editorial workflow.**
-**Made by Aiza Sajid, CyberWaze · Built for the CyberWaze Team**
+Made by **Aiza Sajid, CyberWaze** · For the CyberWaze / CyberPulse editorial team.
 
-A static GitHub Pages-ready web app. It does **not** log in to WordPress, publish posts, access the WordPress database, or store article text on a server.
+This is a **static GitHub Pages site**, with no mandatory API keys, paid subscriptions, or WordPress credentials. It does not publish articles or automatically replace WordPress media. Photos are discovered via Openverse and Wikimedia Commons and must be manually reviewed for authenticity and rights.
 
-## The actual editorial workflow
+## What makes v8 useful
 
-1. Paste a cybersecurity article. The **article title can be blank**.
-2. Select one of the grounded *newsroom headline suggestions*. The first suggestion may retain the supplied headline; all suggestions require an editor to verify facts. Headlines are deterministic, not produced by a hosted text-generation API.
-3. Review the suggested CyberPulse category. Categories are recommendations using keyword matching; WordPress categories/slugs must be checked and selected manually in WordPress. The tool never changes `Uncategorized` automatically.
-4. Read the story angle and choose a photo direction:
-   - **Company / subject:** named organizations / hardware / buildings. Best for a genuine image tied to Nvidia or Microsoft, for example.
-   - **Real-world photo:** a photographed setting linked to the report (university campus, data centre, office team, government building).
-   - **Concept / stock:** illustrative technology scenes. Use these when an exact photo is unavailable.
-5. Browse actual images fetched from **Openverse and Wikimedia Commons**. Two sources are searched independently. Initial thumbnails and search do **not** need a key, payment account or model download.
-6. Choose **Fresh results** for the next page (two pages per phrase, then the next story-specific phrase); results already discovered are preserved and URL duplicates removed. **Deep search** explores three additional batches. All photo providers have their own availability and rate limits, so new unique results cannot be guaranteed endlessly.
-7. Each card shows an **estimated** Article Match score based on image title/tags, searched terms, resolution and image dimensions. This is **not** a measured truth probability or proof the photo illustrates the incident. Cards also offer original image, creator, licence, attribution, save, copy WordPress image details and a WordPress-style preview.
-8. **Pixel QA:** the browser separately checks photo thumbnail pixel brightness, contrast and crop suitability whenever the photo host's cross-origin policy allows it. A failure here never hides the photo. This is a pixel quality diagnostic, **not** semantic image AI.
-9. **Optional free CLIP Vision AI:** click *AI check actual photo pixels*, *Vision AI: check top 3*, or upload a local JPG/PNG/WebP. CLIP compares the image's actual pixel content with story-specific and deliberately competing tech-photo concepts, and then reports *relative visual affinity*. A new AI badge only appears after the scan has succeeded. The first scan must download model files and a JavaScript library; some hosts block image fetches and some browsers/devices lack sufficient memory. For blocked images, download at the source and select **Upload photo to scan**. This optional step NEVER blocks the photo search.
-10. **WordPress preview:** compare the **3:2 CyberPulse article card** (like the screenshots) and **16:9 featured banner**. Export a JPG at **1200×800** or **1200×675**, respectively, if the provider permits CORS fetch; otherwise open the original/download it and crop in WordPress. Export is a local crop, never a newly generated or edited news photo.
-11. Before publishing, always inspect source and licence conditions, author/attribution, contextual truthfulness, trademarks and whether an image is authentic. Caption stock images as **illustrative**. Especially avoid identifying someone as a suspect, claiming an office is the actual breach site, or describing an AI-generated / stock image as actual event photography.
+1. **Read the article first.** Paste a title (optional) and full article. The app extracts names, organizations, story angle, policy, industries, laws and incident phrases from the supplied text. It distinguishes early lead subjects from later supporting mentions.
+2. **News headline and category.** The app suggests article-grounded headlines and a CyberPulse category. Government/AI reporting stories get concise editorial title variations; other stories use bounded, conservative source-text rewrites. These are *editorial suggestions*, not verified facts or hosted generative-AI output.
+3. **Story Intelligence panel.** Separate People, Organizations, Story & Incident, Critical Sectors and Policy & Law groups, plus copyable photo keywords and editorial brief. A keyword is extracted from the article, not researched or confirmed externally.
+4. **Real photos, not generic tech mood boards.** The search plan prioritizes the primary subject, then a genuinely different related subject, then a real setting, with broader illustrative concepts as fallback. Clicking a query chip instantly starts that photo search. The **Fresh results** / **More results** / **Deep search** controls are *above the image gallery*. Previously found unique photos remain during refresh.
+5. **Explainable photo suitability.** Each photo is tagged *Named subject match*, *Contextual match*, *Supporting mention only*, or *Generic / review* based on **photo title and metadata**. Named-subject photos rank higher; misleadingly generic or supporting-only photos rank lower. The numerical `Article Match %` is a heuristic sorting score, **not a truth probability**.
+6. **Top 3 banner shortlist.** The gallery shows the closest available qualifying photos in a smaller shortlist. Clicking a pick opens the WordPress crop preview. When nothing is sufficiently related, the shortlist stays hidden rather than claiming a match.
+7. **WordPress preparation.** Preview the site's 3:2 article-card crop and a 16:9 featured-image crop. JPG export works when the original host permits browser image downloads; otherwise open the original source and crop it in WordPress. Photo source, licence terms, copy credits and WordPress image details remain available.
+8. **Optional pixel checks.** Lightweight pixel-quality diagnostics check brightness and contrast where the photo host permits. Opt-in **free CLIP image vision** downloads a local browser model and compares actual image pixels to story concepts. This needs an internet connection and may require significant device memory; providers may block cross-origin photo access. If blocked, download an original and use **Upload photo to scan**. CLIP does not prove that a photo depicts an actual news event.
 
-## Why photo search works without stock-site keys
+## Example: Trump AI task-force reporting
 
-The app uses:
-- Openverse anonymous image search: https://api.openverse.org/v1/
-- Wikimedia Commons Action API with cross-origin `origin=*`: https://commons.wikimedia.org/w/api.php
+For a supplied article mentioning Donald Trump, Emil Michael, U.S. Defense Department, OpenAI, Hugging Face, AI-powered cyberattacks, AI safety incident reporting, critical infrastructure, banking, energy, emergency services, and the Cybersecurity Information Sharing Act, v8 generates the corresponding **keyword groups**. Its starting image-search sequence is:
 
-These are openly licensed media search libraries, **not curated commercial stock-photo subscriptions**. Results may include uneven quality. The interface ranks likely photo choices, but humans must approve images. Search providers are external services and may enforce rate limits; a 429, timeout or offline service cannot be prevented by this app.
+- Donald Trump White House official photograph
+- Pentagon building Washington DC exterior photograph
+- White House Washington DC exterior photo
+- Emil Michael Department of Defense official photograph
 
-For a business newsroom, actual image usage must comply with each original file's licence and any attribution and share-alike provisions. "No key" means the app is free to *search*, not that every photograph may be republished unrestricted.
+OpenAI and Hugging Face are retained as named **supporting organizations**, not automatically treated as the lead featured-photo subject. The tool flags that an official portrait, Pentagon picture or stock photograph is **illustrative** unless the source independently establishes that it documents the reported task-force meeting. It does **not** fact-check article claims or verify they actually happened.
 
-## Deploy to the existing project
+## Installation and updating GitHub Pages
 
-Existing GitHub repository: https://github.com/msaizah21/cyberpulse-image-finder
+Repository: https://github.com/msaizah21/cyberpulse-image-finder
 
-1. Download and extract `CyberPulse_Newsroom_Image_Studio_v6_GitHub_Ready.zip`.
-2. Open the **extracted folder**. Upload the files inside to the root of the GitHub repository (`index.html`, JS, CSS, icons, `assets/`, `tests/`), replacing earlier versions. **Do not upload only the ZIP**.
-3. Commit changes. Wait for GitHub Pages to deploy through the repository's existing Pages configuration and hard-refresh with `Ctrl + Shift + R`.
-4. The existing Pages URL will use the new interface. This ZIP does not modify `cyberpulsemag.com` or WordPress; its purpose is to help a team select images for manual editorial uploading.
-5. If earlier files like optional stock-worker scripts or config.js remain in the repository, they are unused by v6 and can be removed when cleaning up.
+1. Download the **v8 GitHub-ready ZIP** and extract it.
+2. Upload the **files and folders inside the ZIP** (`index.html`, `.js`, `.css`, `assets/`, `favicon`, etc.) to your existing repository's **root directory**, replacing earlier code files. Do not upload just the ZIP.
+3. Commit changes and, after the Pages deployment finishes, refresh the browser with **Ctrl + Shift + R**.
+4. No Pexels/Pixabay token, commercial photo service or paid AI API is required. The site still depends on public Openverse/Wikimedia services being available.
 
-## Security and privacy
+**Important:** If files were previously published in a different folder, ensure Pages points to the folder containing `index.html`; otherwise the old version can remain visible.
 
-- No tokens, WordPress passwords, stock API keys, or confidential article text are sent to a backend by this static app.
-- **The selected search queries are sent** to the image libraries when you search.
-- If you activate CLIP, it downloads model files from the library/model CDNs. The CLIP inference itself happens locally in the browser, and images are not sent to a paid AI API.
-- Browser storage holds optional image favourites only; full article input is not saved in local storage.
-- Do not include confidential unpublished client information in image search queries without reviewing the query first.
+## Responsible editorial use
 
-## Validation & limitations
-
-Developer validation:
-
-```bash
-node --check analysis.js
-node --check newsroom.js
-node --check relevance.js
-node --check pixelqa.js
-node --check vision.js
-node --check app.js
-node tests/test-analysis.cjs
-node tests/test-relevance.cjs
-node tests/test-newsroom.cjs
-```
-
-The test set includes 6 screenshot-inspired stories: AI adoption, university data incident, US government AI task force, Nvidia espionage, Microsoft 365 service recovery, and general AI security. Browser smoke tests with **mock API responses** checked initial results, refresh, deep search, one-provider failure scenarios, story direction switching, headline suggestions, crop preview and simulated Vision AI completion. These are local/simulated tests, **not** confirmation of live provider uptime, current images, model download or CORS on all photo hosts.
-
-The categories are editable in `analysis.js`. Story-to-photo rules are editable in `newsroom.js`.
+- Image content might not match its metadata. A high ranking does **not** prove that an image shows Trump, a government meeting, an attack scene or any specific incident.
+- Attribution, commercial-use permissions, licence modifications (including ShareAlike), trademarks, privacy, accuracy and rights must be checked at the **original media page** before publishing. Openverse/Commons image quality varies and may not meet a professional-stock standard.
+- The app processes article text locally. Image-search **keywords** are sent to the two public search services. Optional CLIP downloads model assets, and local image analysis does not require sending article text to a paid AI service.
+- Some story patterns are curated for the cybersecurity newsroom. Unknown people and companies may not receive custom photo-direction suggestions. More named entities can be added to `editorial.js` as editorial needs evolve.
 
 ## Files
 
-`index.html`, `styles.css`, `app.js`, `analysis.js`, `newsroom.js`, `relevance.js`, `pixelqa.js`, `vision.js`, `favicon.png`, `favicon.svg`, `assets/`, `tests/`, `.nojekyll`.
+`index.html`, `styles.css`, `app.js`, `analysis.js`, `editorial.js`, `newsroom.js`, `relevance.js`, `pixelqa.js`, `vision.js`, `favicon.png`, `favicon.svg`, `assets/`, `tests/`, `.nojekyll`.
 
+## Validation
 
-## v7 quick improvements
-- Fresh results button duplicated at the top of image results.
-- Search rotation now prioritises strict article-aware phrases before broad fallback terms.
-- Relevance scoring now boosts named-entity and story-type matches, and penalises generic unrelated images.
+Run from this directory:
+
+```bash
+for f in *.js; do node --check "$f"; done
+node tests/test-analysis.cjs
+node tests/test-relevance.cjs
+node tests/test-newsroom.cjs
+node tests/test-intelligence.cjs
+```
+
+Logic tests cover all six earlier CyberPulse article examples and the full supplied Trump/Defense Department article, including photo subject labels and headline extraction. Static validation checks referenced IDs and script locations. Browser automation could not be completed here because the test browser was blocked by the execution environment's administrator restrictions. **Live Openverse/Wikimedia requests, Chrome UI interactions and CLIP model downloads must still be tested after deployment**; no error-free guarantee is made for third-party hosts.

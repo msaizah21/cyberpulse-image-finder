@@ -114,18 +114,25 @@
     const modes={editorial,context,concept:conceptual};
     const storyHeadlines=headlines(title,body);
     // When a source title exists, do not pad the output with full article sentences.
-    const suggested=dedup([...(storyHeadlines||[]),...(!title.trim()?(base.titleSuggestions||[]):[])].filter(x=>x.length<=100)).slice(0,4);
+    const suggestedBase=dedup([...(storyHeadlines||[]),...(!title.trim()?(base.titleSuggestions||[]):[])].filter(x=>x.length<=100)).slice(0,4);
+    const editorialPlan=root.CyberPulseEditorial?.plan(title,body,{...base,searchModes:modes});
+    const informedModes=editorialPlan?.searchModes||modes;
+    const leadSubject=editorialPlan?.mainSubjects?.[0]||base.entity;
+    const suggested=dedup([...(title.trim()?suggestedBase:(editorialPlan?.suggestedHeadlines||[])),...suggestedBase].filter(x=>x.length<=100)).slice(0,4);
     return {...base,
       angle:match?.angle||'Cybersecurity news',
       directionKey:match?.key||'general',
-      visualSubject:base.entity||match?.angle||base.primary,
+      visualSubject:leadSubject||match?.angle||base.primary,
+      entity:leadSubject||base.entity,
       editorialWarning:match?.avoid||'Use descriptive captions. Do not imply a stock photograph depicts the exact incident.',
-      recommendedMode:recommended,
-      searchModes:modes,
+      recommendedMode:editorialPlan?.mainSubjects?.length?'editorial':recommended,
+      searchModes:informedModes,
+      editorial:editorialPlan||null,
       searchModeNames:{editorial:'Company / named subject',context:'Real-world editorial photo',concept:'Concept / stock photo'},
-      stockSearches:dedup([...modes[recommended],...modes.context,...modes.concept]),
-      primaryQuery:modes[recommended][0]||base.primaryQuery,
-      visualConcepts:dedup([...modes[recommended].slice(0,2),...modes.context.slice(0,2),...modes.concept.slice(0,2)]).slice(0,4),
+      stockSearches:dedup([...(informedModes.editorial||[]),...(informedModes.context||[]),...(informedModes.concept||[])]),
+      editorialSearches:dedup([...(informedModes.editorial||[]),...(base.editorialSearches||[])]),
+      primaryQuery:editorialPlan?.primaryQuery||modes[recommended][0]||base.primaryQuery,
+      visualConcepts:dedup([...(informedModes.editorial||[]).slice(0,2),...(informedModes.context||[]).slice(0,2),...(informedModes.concept||[]).slice(0,2)]).slice(0,6),
       titleSuggestions:suggested.length?suggested:base.titleSuggestions,
       headlineSource: title.trim()?'Source headline + grounded variations':'Article text only — edit for accuracy'
     };
