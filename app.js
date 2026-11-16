@@ -9,6 +9,7 @@
   const licenseFilter=$('license-filter'), matchFilter=$('match-filter');
   const sourceFilter=$('source-filter'), sortFilter=$('sort-filter');
   const $more=$('load-more'), $deep=$('deep-search'), toastEl=$('toast');
+  const $topRefresh=$('top-refresh-search'), $topMore=$('top-load-more'), $topDeep=$('top-deep-search');
   let analysis=null, currentQuery='', activeQuery='', batch=0, pendingController=null, activeMode='context', cropMode='card';
   let allImages=[], seen=new Set(), selectedItem=null, onlySaved=false, pending=false, deepPending=false, visionPending=false, toastTimer;
   const favoriteKey='cyberpulse-stock-favorites-v3';
@@ -52,7 +53,7 @@
   }
   function renderAnalysis(result){
     show($('analysis-empty'),false);show($('analysis-content'),true);show($('visual-intent'),true);show($('vision-panel'),true);
-    show($('results-controls'),true);show($('rating-explainer'),true);
+    show($('results-controls'),true);show($('rating-explainer'),true);show($('results-top-actions'),true);
     $('primary-category').textContent=result.primary;
     $('category-symbol').textContent=result.symbol;
     $('category-reason').textContent=result.reason;
@@ -175,8 +176,8 @@
     try{localStorage.setItem(favoriteKey,JSON.stringify(favorites));}catch{toast('Browser storage is full or disabled. Saved photos may not persist.');}
     updateSavedCount();renderGrid();
   }
-  function setPending(value){pending=value;$more.disabled=value;$deep.disabled=value;$('refresh-search').disabled=value;
-    $more.textContent=value?'Searching free image libraries…':'↻ Find more new photos';}
+  function setPending(value){pending=value;$more.disabled=value;$deep.disabled=value;$('refresh-search').disabled=value;if($topRefresh)$topRefresh.disabled=value;if($topMore)$topMore.disabled=value;if($topDeep)$topDeep.disabled=value;
+    $more.textContent=value?'Searching free image libraries…':'↻ Find more photos';if($topMore)$topMore.textContent=value?'Searching…':'＋ More results';}
   function toggleSaved(){onlySaved=!onlySaved;$('saved-toggle').setAttribute('aria-pressed',String(onlySaved));
     $('saved-toggle').classList.toggle('active',onlySaved);renderGrid();}
   function renderGrid(){
@@ -190,10 +191,41 @@
     else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
       onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try All rated, All sources and Eligible licences; then search again.');}
     $('result-counter').textContent=`${filtered.length} displayed · ${allImages.length} discovered`;
-    show($('load-more-wrap'),Boolean(analysis)&&!onlySaved);
+    show($('load-more-wrap'),Boolean(analysis)&&!onlySaved);show($('results-top-actions'),Boolean(analysis)&&!onlySaved);
     $('load-more-status').textContent=batch?`Batch ${batch} explored · duplicates hidden · ${allImages.length} unique photos found`:'Each click explores additional results and avoids duplicates';
     updateSavedCount();
   }
+
+function strictCandidates(){
+  if(!analysis)return [];
+  const primary=(analysis.searchModes?.[activeMode]||[]).map(short);
+  const editorial=(analysis.editorialSearches||[]).map(short);
+  const context=(analysis.searchModes?.context||[]).map(short);
+  const concept=(analysis.searchModes?.concept||[]).map(short);
+  let phrases=[];
+  if(analysis.entity){
+    phrases=[...primary,...editorial,...context];
+  }else if(['hardware','service-outage','data-breach','university-breach','government-ai','phishing','ransomware'].includes(analysis.directionKey)){
+    phrases=[...primary,...context,...editorial,...concept];
+  }else{
+    phrases=[...primary,...context,...concept,...editorial];
+  }
+  return [...new Set(phrases.map(short).filter(Boolean))].slice(0,12);
+}
+function selectPhraseForBatch(query,next){
+  const strict=strictCandidates();
+  const broad=[query,...(analysis?.stockSearches||[]),...(analysis?.editorialSearches||[])].map(short).filter(Boolean);
+  const choices=[...new Set([query,...strict,...broad])].slice(0,12);
+  const firstWindow=Math.min(4, choices.length||1);
+  if(next<=firstWindow){
+    return {phrase:choices[next-1], page:1, strict:true};
+  }
+  const offset=next-firstWindow-1;
+  const phrase=choices[offset % choices.length];
+  const page=Math.floor(offset / choices.length)+2;
+  return {phrase,page,strict:false};
+}
+
   async function runSearch(q,{append=false}={}){
     const query=short(q);if(!query){toast('Enter search keywords first.');return;}
     if(pending)return;
@@ -206,12 +238,9 @@
     currentQuery=query;queryInput.value=query;updateLinks();
     pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
     const next=batch+1;
-    const choices=[...new Set([query,...(analysis.searchModes?.[activeMode]||[]),...(analysis.stockSearches||[]),...(analysis.editorialSearches||[])].map(short).filter(Boolean))].slice(0,12);
-    // Two distinct pages per phrase, then rotate to the next story-specific direction.
-    // This avoids repeatedly showing one stale/unrelated topic on Refresh.
-    const block=Math.floor((next-1)/2);
-    const phrase=choices[block%choices.length];
-    const page=(Math.floor(block/choices.length)*2)+(next-1)%2+1;
+    const selection=selectPhraseForBatch(query,next);
+    const phrase=selection.phrase;
+    const page=selection.page;
     const jobs=sourceJobs(phrase,page,pendingNow.signal);
     try{
       const settled=await Promise.allSettled(jobs.map(job=>job.promise));
@@ -243,7 +272,7 @@
         allImages.push(rated(item,item._query));added++;
       }
       batch=next;
-      $('results-subtitle').textContent=`“${query}” · ${batch} ${batch===1?'batch':'batches'} · Openverse + Wikimedia Commons · check source licence`;
+      $('results-subtitle').textContent=`“${query}” · ${batch} ${batch===1?'batch':'batches'} · ${analysis?.entity?analysis.entity+'-aware':''}${analysis?.entity?' · ':''}${analysis?.directionKey?analysis.directionKey.replace(/-/g,' ')+' focused':''} · Openverse + Wikimedia Commons`;
       if(!added&&!allImages.length){
         resetState(failures.length===jobs.length?'Image libraries temporarily unavailable':'No photos found in this batch',
           'Try Fresh results again or choose another suggested keyword. You can also open the photo libraries below.');
@@ -474,16 +503,19 @@
     pendingController?.abort();setPending(false);analysis=null;currentQuery='';activeQuery='';activeMode='context';batch=0;allImages=[];seen=new Set();onlySaved=false;
     form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';licenseFilter.value='all';count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);
-    show($('results-controls'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
+    show($('results-controls'),false);show($('results-top-actions'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
     grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
     $('result-counter').textContent='';$('results-subtitle').textContent='Find relevant free-licence photographs, ranked by estimated editorial suitability.';
     $('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
   }
   form.addEventListener('submit',e=>{e.preventDefault();analyseNow();});
   $('refresh-search').addEventListener('click',()=>queryInput.value.trim()===activeQuery?runSearch(activeQuery,{append:true}):startNewSearch(queryInput.value));
+  if($topRefresh)$topRefresh.addEventListener('click',()=>queryInput.value.trim()===activeQuery?runSearch(activeQuery,{append:true}):startNewSearch(queryInput.value));
   queryInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();startNewSearch(queryInput.value);}});
   $more.addEventListener('click',()=>runSearch(activeQuery||queryInput.value,{append:true}));
+  if($topMore)$topMore.addEventListener('click',()=>runSearch(activeQuery||queryInput.value,{append:true}));
   $deep.addEventListener('click',deepSearch);
+  if($topDeep)$topDeep.addEventListener('click',deepSearch);
   $('scan-top').addEventListener('click',scanTop);
   document.querySelectorAll('[data-photo-mode]').forEach(button=>button.addEventListener('click',()=>{
     if(!analysis)return;

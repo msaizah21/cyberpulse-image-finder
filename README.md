@@ -73,3 +73,9 @@ The categories are editable in `analysis.js`. Story-to-photo rules are editable 
 ## Files
 
 `index.html`, `styles.css`, `app.js`, `analysis.js`, `newsroom.js`, `relevance.js`, `pixelqa.js`, `vision.js`, `favicon.png`, `favicon.svg`, `assets/`, `tests/`, `.nojekyll`.
+
+
+## v7 quick improvements
+- Fresh results button duplicated at the top of image results.
+- Search rotation now prioritises strict article-aware phrases before broad fallback terms.
+- Relevance scoring now boosts named-entity and story-type matches, and penalises generic unrelated images.

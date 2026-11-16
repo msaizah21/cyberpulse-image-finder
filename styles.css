@@ -116,3 +116,8 @@
 .crop-choice.active{background:#12565b;border-color:#5de8dc;color:#d6fff8}
 .banner-preview-frame img{object-position:center;max-height:none}
 @media(max-width:760px){.visual-intent{flex-direction:column}.editorial-tools{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.mode-picker .intent-btn{flex:1}.wp-card-category{font-size:9px;padding:7px 10px;max-width:55%}.wp-card-copy{padding:16px 17px}}
+
+
+.results-top-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 6px;}
+.results-top-actions .button{white-space:nowrap;}
+@media (max-width: 900px){.results-top-actions{width:100%;justify-content:flex-start;}}
