@@ -26,6 +26,13 @@
       ['Amazon AWS',/\bAWS\b|\bAmazon\s+Web\s+Services\b/i],
       ['Apple',/\bApple\b/i],
       ['CrowdStrike',/\bCrowdStrike\b/i],
+      ['Zscaler',/\bZscaler\b/i],
+      ['CYFIRMA',/\bCYFIRMA\b/i],
+      ['PwC',/\b(?:PwC|PricewaterhouseCoopers)\b/i],
+      ['Cisco',/\bCisco\b/i],
+      ['Meta',/\bMeta\b|\bFacebook\b/i],
+      ['Palo Alto Networks',/\bPalo Alto Networks\b/i],
+      ['Cloudflare',/\bCloudflare\b/i],
       ['U.S. government',/\b(?:U\.S\.|United\s+States)\s+(?:government|administration|federal)\b/i]
     ],
     story:[
@@ -70,9 +77,20 @@
       result[group]=terms.filter(([,rx])=>rx.test(full)).map(([name,rx])=>({name,lead:rx.test(lead),first:full.search(rx)}))
         .sort((a,b)=>Number(b.lead)-Number(a.lead)||a.first-b.first).map(({name,lead})=>({name,lead}));
     }
-    return result;
+
+  // Unknown brand / project names in a headline can still be valuable search anchors.
+  // Only high-signal ALLCAPS or mixed-case tokens, not generic Title Case words.
+  const headline=clean(title||body.split(/[.!?\n]/)[0]||'').slice(0,175);
+  const likely=[...headline.matchAll(/\b(?:[A-Z]{3,}(?:-[A-Z]{2,})?|[A-Z][a-z]+[A-Z][A-Za-z]+|[A-Z][a-z]+[A-Z][a-z]+)\b/g)]
+    .map(x=>x[0]).filter(x=>!new Set(['NEWS','UPDATE','BREAKING','AI','UAE','USA','CVE','CYBER','COVID','CEO','CISO','VPN','URL','HTTP','HTTPS','Microsoft','NVIDIA','Google','OpenAI']).has(x))
+    .filter(x=>!result.organizations.some(v=>v.name.toLowerCase()===x.toLowerCase()));
+  if(!result.organizations.some(x=>x.lead)&&likely.length){
+    const name=likely[0];
+    result.organizations.unshift({name,lead:true,inferred:true});
   }
-  const photoIdeas={
+  return result;
+}
+const photoIdeas={
     'Donald Trump':['Donald Trump White House official photograph','President Donald Trump speaking Washington DC','Donald Trump White House press conference','Donald Trump portrait photograph'],
     'Emil Michael':['Emil Michael Department of Defense official photograph','Emil Michael technology official photograph'],
     'U.S. Department of Defense':['Pentagon building Washington DC exterior photograph','United States Department of Defense Pentagon building','Pentagon headquarters aerial photograph'],
@@ -84,7 +102,14 @@
     'Google':['Google company headquarters photograph','Google campus exterior'],
     'Apple':['Apple Park building Cupertino photo','Apple iPhone product photograph'],
     'Amazon AWS':['Amazon cloud data center photograph','Amazon headquarters building'],
-    'CrowdStrike':['CrowdStrike company headquarters photograph']
+    'CrowdStrike':['CrowdStrike company headquarters photograph'],
+    'Zscaler':['Zscaler logo on company office building','Zscaler cybersecurity company event'],
+    'CYFIRMA':['CYFIRMA cybersecurity company office','CYFIRMA company logo photograph'],
+    'PwC':['PwC office building photograph','PricewaterhouseCoopers corporate building'],
+    'Cisco':['Cisco networking equipment photograph','Cisco corporate headquarters photograph'],
+    'Meta':['Meta headquarters building exterior'],
+    'Palo Alto Networks':['Palo Alto Networks headquarters building'],
+    'Cloudflare':['Cloudflare company headquarters photograph']
   };
   const incidentIdeas={
     'AI task force':['United States Capitol building Washington photograph','White House Washington DC exterior photo','Pentagon building Washington DC photograph'],
@@ -110,7 +135,7 @@
     const topNames=unique([...mainPeople,...mainOrgs].map(x=>x.name));
     const subjects=unique([...topNames,...named]);
     const mainStory=groups.story.find(x=>x.lead)?.name||groups.story[0]?.name||base.angle||base.primary;
-    let primary=unique(topNames.flatMap(s=>photoIdeas[s]||[])).slice(0,8);
+    let primary=unique(topNames.flatMap(s=>photoIdeas[s]||[`${s} company building photograph`,`${s} technology product real photograph`])).slice(0,8);
     let settings=unique([...(photoIdeas['U.S. Department of Defense']||[]),...(incidentIdeas[mainStory]||[])]);
     if(!governmentAI)settings=unique([...(incidentIdeas[mainStory]||[]),...(base.searchModes?.context||[])]);
     if(governmentAI){
@@ -148,13 +173,15 @@
     const evidence=governmentAI
       ?'Prioritise real photographs of Donald Trump, the Pentagon and U.S. government institutions. AI incidents and infrastructure are supporting context—not proof an event occurred.'
       :`Prioritise real photographs of ${topNames[0]||mainStory}; use broad technology scenes only as clearly illustrative alternatives.`;
-    return {groups,subjects,mainSubjects:topNames.length?topNames.slice(0,3):subjects.slice(0,2),mainStory,focus,governmentAI,
+    const mainSubjects=governmentAI?unique(['Donald Trump','U.S. Department of Defense','Emil Michael'].filter(name=>subjects.includes(name))):
+      (topNames.length?topNames.slice(0,3):subjects.slice(0,2));
+    return {groups,subjects,mainSubjects,mainStory,focus,governmentAI,
       highlightedKeywords:unique([...people,...orgs,...headlines,...groups.sectors.map(x=>x.name),...groups.policy.map(x=>x.name)]).slice(0,18),
       searchModes:directions,searchOrder:wide,primaryQuery:directions.editorial[0]||base.primaryQuery,
       summary:evidence,suggestedHeadlines:unique(proposedHeadlines).slice(0,4),
       caution:governmentAI?'Do not label a generic Trump, Pentagon or government image as a photo of the AI task-force meeting; the article claims must be independently fact-checked.':'Matching a name in image metadata does not prove the photograph depicts this news event.'};
   }
-  const normalized=s=>clean(s).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9\s]/g,' ');
+  const normalized=s=>clean(s).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
   const contains=(text,phrase)=>{
     const t=normalized(text),p=normalized(phrase);
     if(!p)return false;
@@ -175,13 +202,14 @@
     const concepts=unique([intelligence.mainStory,intelligence.focus,...(intelligence.groups.story||[]).map(x=>x.name),
       ...(intelligence.groups.sectors||[]).map(x=>x.name)]).filter(n=>contains(meta,n));
     // A standalone OpenAI photo is NOT a good lead photo for a Trump task-force story.
-    const secondaryOnly=!direct.length&&secondary.length>0;
+    const governmentContext=Boolean(intelligence.governmentAI&&/\b(?:white house|capitol|government committee|press briefing)\b/i.test(meta));
+    const secondaryOnly=!direct.length&&secondary.length>0&&!governmentContext;
     let level='review',label='Generic / review';
     if(direct.length){level='direct';label='Named subject match';}
-    else if(concepts.length){level='context';label='Contextual match';}
+    else if(concepts.length||governmentContext){level='context';label='Contextual match';}
     else if(secondaryOnly){level='secondary';label='Supporting mention only';}
     const explanation=direct.length?`Source metadata mentions ${direct.slice(0,2).join(', ')}. Verify that the photograph and date suit the story.`:
-      concepts.length?`Related topic in metadata: ${concepts.slice(0,2).join(', ')}. Illustrative, not an event photograph.`:
+      concepts.length||governmentContext?`Related government/story setting${concepts.length?': '+concepts.slice(0,2).join(', '):''}. Illustrative, not an event photograph.`:
       secondaryOnly?`Photo relates to ${secondary.slice(0,2).join(', ')}, but that is not the story's main subject.`:
       'No clear story-specific clue in the image description; consider another photo.';
     return {label,level,explanation,subjectMatches:direct,contextMatches:concepts,secondaryMatches:secondary};

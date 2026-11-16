@@ -7,11 +7,13 @@
   const form=$('article-form'), titleInput=$('article-title'), bodyInput=$('article-body');
   const queryInput=$('search-query'), grid=$('image-grid'), state=$('result-state');
   const licenseFilter=$('license-filter'), matchFilter=$('match-filter');
-  const sourceFilter=$('source-filter'), sortFilter=$('sort-filter');
+  const sourceFilter=$('source-filter'), sortFilter=$('sort-filter'), storyFilter=$('story-filter');
   const $more=$('load-more'), $deep=$('deep-search'), toastEl=$('toast');
   const $topRefresh=$('top-refresh-search'), $topMore=$('top-load-more'), $topDeep=$('top-deep-search');
   let analysis=null, currentQuery='', activeQuery='', batch=0, pendingController=null, activeMode='context', cropMode='card';
   let allImages=[], seen=new Set(), selectedItem=null, onlySaved=false, pending=false, deepPending=false, visionPending=false, toastTimer;
+  const $progress=$('search-progress'), $progressText=$('search-progress-text'), $notice=$('curation-notice');
+  let lastNewCount=0, lastFreshBatch=0, lastRelevantNewCount=0;
   let shortlistIds=[];
   const favoriteKey='cyberpulse-stock-favorites-v3';
   let favorites={};
@@ -26,6 +28,8 @@
   const slug=s=>String(s||'image').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'image';
   const graphicTerms=window.CyberPulseRelevance.blocked;
   function toast(message){toastEl.textContent=message;toastEl.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('visible'),4000);}
+  function progress(message,visible=true){if($progressText)$progressText.textContent=message;show($progress,visible);}
+  function notice(message,visible=true){if($notice){$notice.textContent=message;show($notice,visible);}}
   function resetState(title,description,error=false){
     state.classList.toggle('error',error);state.replaceChildren(txt('div','result-placeholder-icon',error?'!':'▧'),txt('h3','',title),txt('p','',description));
     show(state,true);show(grid,false);
@@ -238,7 +242,9 @@
     if(visual) score=window.CyberPulseVision.combineScore(score,visual.affinity);
     // A pixel similarity result cannot establish that an image depicts a named incident.
     if(editorialFit?.level==='review')score=Math.min(score,58);
-    if(editorialFit?.level==='secondary')score=Math.min(score,63);
+    if(editorialFit?.level==='secondary')score=Math.min(score,53);
+    // Do not let resolution/crop alone make unrelated artwork look like a story match.
+    if(editorialFit?.level==='review'&&!visual)score=Math.min(score,45);
     const tier=score>=80?'Strong estimated relevance':score>=60?'Related visual':score>=40?'Illustrative — review':'Low story relevance';
     const reason=editorialFit?.explanation||raw.reason;
     return {...item,editorialFit,match:{...raw,score,tier,reason:visual?`${reason} · CLIP reviewed pixels (${visual.affinity}% relative similarity).`:reason}};
@@ -251,17 +257,25 @@
     updateSavedCount();renderGrid();
   }
   function setPending(value){pending=value;$more.disabled=value;$deep.disabled=value;$('refresh-search').disabled=value;if($topRefresh)$topRefresh.disabled=value;if($topMore)$topMore.disabled=value;if($topDeep)$topDeep.disabled=value;
-    $more.textContent=value?'Searching free image libraries…':'↻ Find more photos';if($topMore)$topMore.textContent=value?'Searching…':'＋ More results';}
+    $more.textContent=value?'Searching free image libraries…':'↻ Find more photos';if($topMore)$topMore.textContent=value?'Searching…':'＋ More results';
+    if($topRefresh)$topRefresh.innerHTML=value?'⌛ FINDING NEW PHOTOS…':'<span aria-hidden="true">↻</span> REFRESH — NEW STORY PHOTOS';}
   function toggleSaved(){onlySaved=!onlySaved;$('saved-toggle').setAttribute('aria-pressed',String(onlySaved));
     $('saved-toggle').classList.toggle('active',onlySaved);renderGrid();}
   function renderGrid(){
     const data=onlySaved?Object.values(favorites).map(x=>rated(x,currentQuery||analysis?.stockSearches?.[0]||'')):allImages;
     const minMatch=Number(matchFilter.value)||0;
-    const filtered=data.filter(x=>x.match.score>=minMatch&&(sourceFilter.value==='all'||x.source===sourceFilter.value)&&acceptedLicense(x));
-    filtered.sort((a,b)=>sortFilter.value==='resolution'?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
+    const eligible=data.filter(x=>x.match.score>=minMatch&&(sourceFilter.value==='all'||x.source===sourceFilter.value)&&acceptedLicense(x));
+    const focused=eligible.filter(x=>x.editorialFit?.level==='direct'||x.editorialFit?.level==='context');
+    const useFocus=storyFilter.value==='focused'&&!onlySaved;
+    const filtered=useFocus&&focused.length?focused:eligible;
+    if(useFocus&&!focused.length&&eligible.length)notice('No clear named-subject / story-context photo found in source descriptions yet. Showing broader options clearly marked for review; try Refresh or another photo direction.');
+    else if(lastFreshBatch>1 && lastNewCount>0 && lastRelevantNewCount>0)notice(`${lastRelevantNewCount} article-aligned new photos out of ${lastNewCount} newly found. Fresh matching options appear first; earlier ones remain available.`);
+    else if(lastFreshBatch>1 && lastNewCount>0)notice(`${lastNewCount} new photo candidates found, but none passed the article-specific metadata check. Existing good matches are preserved. Select “Show all options” to review them, or Refresh again.`);
+    else notice('',false);
+    filtered.sort((a,b)=>sortFilter.value==='newest'?(b._batch-a._batch)||(b.match.score-a.match.score):sortFilter.value==='resolution' ?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
       sortFilter.value==='visual'?(Number(!!b.vision)-Number(!!a.vision))||(b.match.score-a.match.score):
       (b.match.score-a.match.score)||(b.width*b.height-a.width*a.height));
-    renderShortlist(filtered);
+    renderShortlist([...eligible].sort((a,b)=>b.match.score-a.match.score));
     if(filtered.length){grid.replaceChildren(...filtered.map(renderCard));show(grid,true);show(state,false);}
     else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
       onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try All rated, All sources and Eligible licences; then search again.');}
@@ -301,66 +315,82 @@ function selectPhraseForBatch(query,next){
   return {phrase,page,strict:false};
 }
 
-  async function runSearch(q,{append=false}={}){
-    const query=short(q);if(!query){toast('Enter search keywords first.');return;}
-    if(pending)return;
-    if(!analysis){toast('Please analyse an article first.');return;}
-    if(!append||query!==activeQuery){
-      pendingController?.abort();activeQuery=query;batch=0;seen=new Set();allImages=[];
-      resetState('Finding photos for your story…','Checking Openverse and Wikimedia Commons. No login or API key needed.');
-      $('result-counter').textContent='';
-    }
-    currentQuery=query;queryInput.value=query;updateLinks();
-    pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
-    const next=batch+1;
-    const selection=selectPhraseForBatch(query,next);
-    const phrase=selection.phrase;
-    const page=selection.page;
-    const jobs=sourceJobs(phrase,page,pendingNow.signal);
-    try{
-      const settled=await Promise.allSettled(jobs.map(job=>job.promise));
-      if(pendingNow.signal.aborted)return;
-      const collected=[],failures=[];
-      settled.forEach((result,i)=>{
-        if(result.status==='fulfilled')collected.push(...result.value.map(item=>({...item,_query:phrase})));
-        else failures.push(jobs[i].name);
-      });
-      // On the first empty batch try a short, broader article topic once, automatically.
-      // This recovers from extremely specific headlines without forcing the editor to retry.
-      if(next===1&&!collected.some(isPhoto)&&!pendingNow.signal.aborted){
-        const fallback=short([...(analysis?.searchModes?.context||[]),...(analysis?.searchModes?.concept||[]),...(analysis?.editorialSearches||[]),analysis?.topic,'cybersecurity computers'].find(term=>term&&short(term).toLowerCase()!==phrase.toLowerCase())||'cybersecurity computers');
-        if(fallback&&fallback.toLowerCase()!==phrase.toLowerCase()){
-          const retry=await Promise.allSettled(sourceJobs(fallback,1,pendingNow.signal).map(job=>job.promise));
-          if(pendingNow.signal.aborted)return;
-          retry.forEach((result,i)=>{
-            if(result.status==='fulfilled')collected.push(...result.value.map(item=>({...item,_query:fallback})));
-            else if(!failures.includes(jobs[i].name))failures.push(jobs[i].name);
-          });
-        }
-      }
-      let added=0;
-      for(const item of collected){
-        if(!isPhoto(item))continue;
-        const key=item.imageUrl||item.id;
-        if(seen.has(key))continue;
-        seen.add(key);
-        allImages.push(rated(item,item._query));added++;
-      }
-      batch=next;
-      $('results-subtitle').textContent=`“${query}” · ${batch} ${batch===1?'batch':'batches'} · ${analysis?.entity?analysis.entity+'-aware':''}${analysis?.entity?' · ':''}${analysis?.directionKey?analysis.directionKey.replace(/-/g,' ')+' focused':''} · Openverse + Wikimedia Commons`;
-      if(!added&&!allImages.length){
-        resetState(failures.length===jobs.length?'Image libraries temporarily unavailable':'No photos found in this batch',
-          'Try Fresh results again or choose another suggested keyword. You can also open the photo libraries below.');
-      }else if(!added){toast('No new photos in this batch. Click again for the next page or try another keyword.');}
-      else if(failures.length){toast(`${added} new photos found. One image library was unavailable; other results are shown.`);}
-      renderGrid();show($('more-search'),true);
-    }catch(err){
-      if(!pendingNow.signal.aborted){
-        if(allImages.length)toast('A photo source could not load. Previously found photos are still available.');
-        else resetState('Unable to load this batch','Try a new keyword or use the source links below.');
-      }
-    }finally{if(!pendingNow.signal.aborted){setPending(false);renderGrid();}}
+
+async function runSearch(q,{append=false}={}){
+  const query=short(q);
+  if(!query){toast('Enter search keywords first.');return;}
+  if(pending)return;
+  if(!analysis){toast('Please analyse an article first.');return;}
+  if(!append||query!==activeQuery){
+    pendingController?.abort();activeQuery=query;batch=0;seen=new Set();allImages=[];lastNewCount=0;lastFreshBatch=0;lastRelevantNewCount=0;
+    sortFilter.value='match';
+    resetState('Finding photos for your story…','Searching real photo libraries across story-specific angles.');
+    $('result-counter').textContent='';notice('',false);
   }
+  currentQuery=query;queryInput.value=query;updateLinks();
+  pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
+  const next=batch+1;
+  const planner=window.CyberPulseSearchPlan;
+  const selections=planner.batchPlan(analysis,activeMode,query,next);
+  // Each click tries TWO different editorial directions, then up to two deeper alternatives if neither yields photos.
+  const attempted=[];let newlyAdded=0;let unavailable=[];
+  try{
+    const trySelection=async(sel)=>{
+      if(pendingNow.signal.aborted)return;
+      attempted.push(sel.phrase);
+      progress(`Searching ${attempted.length}: ${sel.phrase} · source page ${sel.page}`);
+      const names=['Openverse','Wikimedia Commons'];
+      const jobs=names.map(source=>{
+        const compact=planner.providerQuery(sel.phrase,source);
+        const work=source==='Openverse'?searchOpenverse(compact,sel.page,pendingNow.signal):searchCommons(compact,sel.page,pendingNow.signal);
+        return {name:source,work};
+      });
+      const settled=await Promise.allSettled(jobs.map(x=>x.work));
+      if(pendingNow.signal.aborted)return;
+      settled.forEach((result,i)=>{
+        if(result.status!=='fulfilled'){if(!unavailable.includes(jobs[i].name))unavailable.push(jobs[i].name);return;}
+        for(const item of result.value){
+          if(!isPhoto(item))continue;
+          const key=item.imageUrl||item.id;
+          if(seen.has(key))continue;
+          seen.add(key);
+          allImages.push(rated({...item,_query:sel.phrase,_batch:next},sel.phrase));newlyAdded++;
+        }
+      });
+    };
+    for(const selection of selections)await trySelection(selection);
+    const relevantNew=()=>allImages.filter(x=>x._batch===next&&(x.editorialFit?.level==='direct'||x.editorialFit?.level==='context')).length;
+    if(!relevantNew() && !pendingNow.signal.aborted){
+      // Search another related angle when the first directions have no clear story-specific results.
+      const fallback=planner.batchPlan(analysis,activeMode,query,next+1);
+      for(const selection of fallback){if(relevantNew()||pendingNow.signal.aborted)break;await trySelection(selection);}
+    }
+    if(pendingNow.signal.aborted)return;
+    batch=next;lastNewCount=newlyAdded;lastRelevantNewCount=relevantNew();lastFreshBatch=next;
+    if(append&&newlyAdded>0)sortFilter.value='newest';
+    $('results-subtitle').textContent=`${analysis?.editorial?.mainStory||analysis?.angle||'Your article'} · ${batch} search ${batch===1?'round':'rounds'} · actual source descriptions guide ranking`;
+    if(!newlyAdded&&!allImages.length){
+      resetState(unavailable.length===2?'Image providers could not be reached':'No relevant photographs found',
+        'Try Refresh again, select another story angle, or open the original photo libraries linked below.');
+      progress('No photos returned. Try Refresh for other story-specific search directions.');
+    }else if(!newlyAdded){
+      toast('No new photos in this round. Existing photos preserved. Refresh again for the next story angle.');
+      progress(`No new results · attempted: ${attempted.slice(0,4).join(' / ')}. Previous photos preserved.`);
+    }else{
+      progress(`${lastRelevantNewCount} article-aligned / ${newlyAdded} new candidates · searched: ${attempted.slice(0,4).join(' / ')} · earlier photos preserved.`);
+      if(unavailable.length)toast(`${newlyAdded} photos added. One source may be temporarily unavailable.`);
+      else if(append)toast(lastRelevantNewCount?`${lastRelevantNewCount} new article-aligned photos appear first.`:`${newlyAdded} broader photo candidates found; switch to Show all options or Refresh.`);
+    }
+    renderGrid();show($('more-search'),true);
+  }catch(err){
+    if(!pendingNow.signal.aborted){
+      progress('Photo search could not finish. Previous results are preserved.');
+      if(allImages.length)toast('A source could not load. Your earlier photos are still here.');
+      else resetState('Photo libraries unavailable','Try another keyword or use the links to browse originals.');
+      renderGrid();
+    }
+  }finally{if(!pendingNow.signal.aborted){setPending(false);renderGrid();}}
+}
   function startNewSearch(q){if(pending){pendingController?.abort();setPending(false);}runSearch(q,{append:false});}
   async function deepSearch(){
     if(!analysis||pending||deepPending)return;
@@ -520,6 +550,7 @@ function selectPhraseForBatch(query,next){
     photo.addEventListener('error',()=>{if(!thumbnailRetried&&item.imageUrl!==photo.src){thumbnailRetried=true;photo.src=item.imageUrl;return;}photo.style.display='none';fallback.style.display='grid';});
     const badges=txt('div','image-badges');badges.append(txt('span','source-badge',item.source));
     if(shortlistIds.includes(item.id))badges.append(txt('span','shortlist-badge',`Top pick #${shortlistIds.indexOf(item.id)+1}`));
+    if(lastFreshBatch>1 && item._batch===lastFreshBatch)badges.append(txt('span','fresh-badge','NEW · LATEST REFRESH'));
     const fav=txt('button',`favorite-button${favorites[item.id]?' is-saved':''}`,favorites[item.id]?'★ Saved':'☆ Save');
     fav.type='button';fav.setAttribute('aria-label',favorites[item.id]?'Remove saved photo':'Save photo to browser');
     fav.addEventListener('click',()=>saveFavorite(item));
@@ -581,7 +612,7 @@ function selectPhraseForBatch(query,next){
   function count(){$('char-count').textContent=`${formatNum(titleInput.value.length+bodyInput.value.length)} characters`;}
   function clear(){
     pendingController?.abort();setPending(false);analysis=null;currentQuery='';activeQuery='';activeMode='context';batch=0;allImages=[];seen=new Set();onlySaved=false;
-    form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';licenseFilter.value='all';count();
+    form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';storyFilter.value='focused';licenseFilter.value='all';lastFreshBatch=0;lastNewCount=0;lastRelevantNewCount=0;progress('',false);notice('',false);count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);show($('editorial-intelligence'),false);show($('editor-shortlist'),false);
     show($('results-controls'),false);show($('results-top-actions'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
     shortlistIds=[];grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
@@ -615,7 +646,7 @@ function selectPhraseForBatch(query,next){
   $('crop-feature').addEventListener('click',()=>setCrop('feature'));
   $('vision-upload').addEventListener('change',e=>scanUploadedFile(e.target.files?.[0]));
   $('saved-toggle').addEventListener('click',toggleSaved);
-  [matchFilter,sourceFilter,sortFilter,licenseFilter].forEach(el=>el.addEventListener('change',renderGrid));
+  [matchFilter,sourceFilter,sortFilter,storyFilter,licenseFilter].forEach(el=>el.addEventListener('change',renderGrid));
   $('clear-button').addEventListener('click',clear);
   $('close-banner').addEventListener('click',()=>$('banner-dialog').close());
   bodyInput.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyseNow();}});

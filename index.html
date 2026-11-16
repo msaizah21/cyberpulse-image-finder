@@ -107,18 +107,21 @@
       </section>
       <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Find openly licensed photos matched to the topic; higher-resolution, wider images appear first when equally relevant.</p></div>
         <div class="results-top-actions" id="results-top-actions" hidden>
-          <button id="top-refresh-search" type="button" class="button button-primary">↻ Fresh results</button>
+          <button id="top-refresh-search" type="button" class="button button-primary button-fresh"><span aria-hidden="true">↻</span> REFRESH — NEW STORY PHOTOS</button>
           <button id="top-load-more" type="button" class="button button-quiet">＋ More results</button>
           <button id="top-deep-search" type="button" class="button button-quiet">✦ Deep search</button>
         </div>
         <div class="results-controls" id="results-controls" hidden>
+          <label for="story-filter">Relevance</label><select id="story-filter"><option value="focused">Closest to article</option><option value="all">Show all options</option></select>
           <label for="match-filter">Match</label><select id="match-filter"><option value="0">All rated</option><option value="60">60%+</option><option value="75">75%+</option></select>
           <label for="source-filter">Source</label><select id="source-filter"><option value="all">All sources</option><option value="Openverse">Openverse</option><option value="Wikimedia Commons">Wikimedia Commons</option></select>
-          <label for="sort-filter">Sort</label><select id="sort-filter"><option value="match">Best match</option><option value="resolution">Resolution</option><option value="visual">AI-scanned first</option></select>
+          <label for="sort-filter">Sort</label><select id="sort-filter"><option value="match">Best match</option><option value="newest">Fresh results first</option><option value="resolution">Resolution</option><option value="visual">AI-scanned first</option></select>
           <label for="license-filter">Rights</label><select id="license-filter"><option value="all">Eligible licences</option><option value="no-credit">CC0 / PD + stock licence</option><option value="credit">CC BY / CC BY-SA</option></select>
           <button id="saved-toggle" type="button" class="saved-toggle" aria-pressed="false">☆ Saved <span id="saved-count">0</span></button>
         </div>
       </div>
+      <div class="search-progress" id="search-progress" role="status" aria-live="polite" hidden><span class="search-pulse" aria-hidden="true"></span><span id="search-progress-text">Finding article-matched editorial photographs…</span></div>
+      <div class="curation-notice" id="curation-notice" hidden></div>
       <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to see relevant photos with a match rating and original source.</p></div>
       <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match % is an estimated ranking, not a factual probability.</strong> Before Vision AI, it uses image metadata, subject keywords, resolution and crop. An AI-verified badge appears only after CLIP has actually inspected the image pixels. Always verify what the photograph depicts and its licence.</div>
       <section id="editor-shortlist" class="editor-shortlist" hidden aria-labelledby="shortlist-title"><div class="shortlist-heading"><div><span class="step-label">NEWSROOM SELECTION</span><h3 id="shortlist-title">Closest available banner options</h3></div><p id="shortlist-note">These are suggestions, not confirmed photos of the reported incident.</p></div><div id="shortlist-cards" class="shortlist-cards"></div></section>
@@ -169,6 +172,7 @@
   <script src="./analysis.js"></script>
   <script src="./relevance.js"></script>
   <script src="./editorial.js"></script>
+  <script src="./searchplan.js"></script>
   <script src="./newsroom.js"></script>
   <script src="./pixelqa.js"></script>
   <script src="./vision.js"></script>

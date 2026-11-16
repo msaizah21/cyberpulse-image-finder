@@ -1,10 +1,10 @@
-# CyberPulse Newsroom — Article Intelligence & Banner Studio (v8)
+# CyberPulse Newsroom — Story-Matched WordPress Featured Images (v9)
 
 Made by **Aiza Sajid, CyberWaze** · For the CyberWaze / CyberPulse editorial team.
 
 This is a **static GitHub Pages site**, with no mandatory API keys, paid subscriptions, or WordPress credentials. It does not publish articles or automatically replace WordPress media. Photos are discovered via Openverse and Wikimedia Commons and must be manually reviewed for authenticity and rights.
 
-## What makes v8 useful
+## What makes v9 useful
 
 1. **Read the article first.** Paste a title (optional) and full article. The app extracts names, organizations, story angle, policy, industries, laws and incident phrases from the supplied text. It distinguishes early lead subjects from later supporting mentions.
 2. **News headline and category.** The app suggests article-grounded headlines and a CyberPulse category. Government/AI reporting stories get concise editorial title variations; other stories use bounded, conservative source-text rewrites. These are *editorial suggestions*, not verified facts or hosted generative-AI output.
@@ -17,7 +17,7 @@ This is a **static GitHub Pages site**, with no mandatory API keys, paid subscri
 
 ## Example: Trump AI task-force reporting
 
-For a supplied article mentioning Donald Trump, Emil Michael, U.S. Defense Department, OpenAI, Hugging Face, AI-powered cyberattacks, AI safety incident reporting, critical infrastructure, banking, energy, emergency services, and the Cybersecurity Information Sharing Act, v8 generates the corresponding **keyword groups**. Its starting image-search sequence is:
+For a supplied article mentioning Donald Trump, Emil Michael, U.S. Defense Department, OpenAI, Hugging Face, AI-powered cyberattacks, AI safety incident reporting, critical infrastructure, banking, energy, emergency services, and the Cybersecurity Information Sharing Act, v9 generates the corresponding **keyword groups**. Its starting image-search sequence is:
 
 - Donald Trump White House official photograph
 - Pentagon building Washington DC exterior photograph
@@ -30,7 +30,7 @@ OpenAI and Hugging Face are retained as named **supporting organizations**, not 
 
 Repository: https://github.com/msaizah21/cyberpulse-image-finder
 
-1. Download the **v8 GitHub-ready ZIP** and extract it.
+1. Download the **v9 GitHub-ready ZIP** and extract it.
 2. Upload the **files and folders inside the ZIP** (`index.html`, `.js`, `.css`, `assets/`, `favicon`, etc.) to your existing repository's **root directory**, replacing earlier code files. Do not upload just the ZIP.
 3. Commit changes and, after the Pages deployment finishes, refresh the browser with **Ctrl + Shift + R**.
 4. No Pexels/Pixabay token, commercial photo service or paid AI API is required. The site still depends on public Openverse/Wikimedia services being available.
@@ -61,3 +61,20 @@ node tests/test-intelligence.cjs
 ```
 
 Logic tests cover all six earlier CyberPulse article examples and the full supplied Trump/Defense Department article, including photo subject labels and headline extraction. Static validation checks referenced IDs and script locations. Browser automation could not be completed here because the test browser was blocked by the execution environment's administrator restrictions. **Live Openverse/Wikimedia requests, Chrome UI interactions and CLIP model downloads must still be tested after deployment**; no error-free guarantee is made for third-party hosts.
+
+
+## v9: Refresh that visibly produces different photos
+
+- **Top sticky Refresh** stays accessible while browsing image results; a status bar shows exactly which article-related search directions were attempted.
+- Each press searches **two distinct editorial directions**, across both public libraries. If no new photos are found, the tool tries another related angle; it does not falsely claim to have found something.
+- Search queries are compacted for each provider to reduce empty results from overly-long strings, while the full article search intent is retained for editorial scoring.
+- Photos from the **latest round** are tagged **NEW · LATEST REFRESH**, and the grid automatically switches to **Fresh results first** so the button visibly changes the top photos. Older candidates remain available.
+- **Closest to article** is the default photo filter. It prefers named subjects and context with documentary support in original titles/tags. If none qualify, broader candidates are shown but prominently flagged as needing review. Use **Show all options** to see everything.
+- Article signals now include Zscaler, CYFIRMA, PwC, Cisco, Meta, Palo Alto Networks and Cloudflare. Unknown acronym-like and mixed-case organizations in headlines can be proposed as search anchors (review names before publishing).
+- An individual image's **match % remains an editorial heuristic**, not a measured probability. Optional CLIP examines pixels only when explicitly run. Never claim an event is shown unless the photographer/source establishes it.
+
+## CyberPulse website review scope (16 November 2026)
+
+The news archive `https://cyberpulsemag.com/articles/` returned HTTP 403 from the website reader used for this review, and the site's WordPress API could not be retrieved. Therefore **not every published post was independently audited**. The design referenced the user's supplied November 2026 screenshots of six visible cards (AI adoption, B.C. university incident, Trump AI task force, NVIDIA espionage, Microsoft 365 recovery, and AI security race), and the site's publicly indexed home page and accessible NVIDIA article.
+
+Observed from those screenshots: dark navy article cards, bright cyan category pills, generally photo-led 3:2 imagery, and several cards showing “UNCATEGORIZED”. Tool previews follow the visible card style. Note: fixing WordPress category assignments or the website's unequal masonry image heights is a **separate website change**, not something this image-finder tool can automatically do.

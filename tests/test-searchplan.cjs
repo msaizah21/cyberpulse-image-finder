@@ -1,0 +1,36 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm');
+const root={window:{}};
+for(const file of ['analysis.js','relevance.js','editorial.js','newsroom.js','searchplan.js'])vm.runInNewContext(fs.readFileSync(file,'utf8'),root,{filename:file});
+const sample=`Advisers on President Donald Trump’s AI task force convened Thursday to explore how to get vital U.S. industries to disclose cyberattacks powered by artificial intelligence. The U.S. Department of Defense and Emil Michael discussed AI safety incident reporting, critical infrastructure, the Pentagon and sharing cybersecurity information. Other platforms including OpenAI and Hugging Face were supporting mentions.`;
+const analysed=root.window.CyberPulseNewsroom.enhance(root.window.CyberPulseAnalyzer.analyseArticle('',sample),'',sample);
+const planner=root.window.CyberPulseSearchPlan;
+const first=planner.batchPlan(analysed,'editorial',analysed.primaryQuery,1);
+const second=planner.batchPlan(analysed,'editorial',analysed.primaryQuery,2);
+const third=planner.batchPlan(analysed,'editorial',analysed.primaryQuery,3);
+assert.equal(first.length,2);
+assert.equal(second.length,2);
+assert.notEqual(first[0].angle,first[1].angle);
+assert.notEqual(second[0].angle,second[1].angle);
+assert.ok(/trump/i.test(first[0].phrase));
+assert.ok(/pentagon/i.test(first[1].phrase));
+assert.ok(/white house/i.test(second[0].phrase));
+assert.ok(/emil michael/i.test(second[1].phrase));
+assert.equal(planner.providerQuery('Donald Trump White House official photograph','Openverse'),'Donald Trump');
+assert.equal(planner.providerQuery('Pentagon building Washington DC exterior photograph','Wikimedia Commons'),'Pentagon');
+assert.deepEqual(JSON.stringify(analysed.editorial.mainSubjects), JSON.stringify(['Donald Trump','U.S. Department of Defense','Emil Michael']));
+assert.equal(root.window.CyberPulseEditorial.evaluatePhoto({title:'Pentagon building Washington, D.C.'},analysed).level,'direct');
+assert.equal(root.window.CyberPulseEditorial.evaluatePhoto({title:'Hugging Face company logo'},analysed).level,'secondary');
+assert.equal(root.window.CyberPulseEditorial.evaluatePhoto({title:'White House Washington D.C. exterior'},analysed).level,'context');
+const photos=['CYFIRMA Shipping Threat','PwC Vendor Breach','Zscaler AI Campaign'];
+for(const title of photos){
+ const x=root.window.CyberPulseNewsroom.enhance(root.window.CyberPulseAnalyzer.analyseArticle(title,'New security reports are being investigated.'),title,'New security reports are being investigated.');
+ const brand=title.split(' ')[0];assert.ok(x.editorial.mainSubjects.includes(brand),`${brand} not primary`);
+ assert.ok(x.primaryQuery.toLowerCase().includes(brand.toLowerCase()),`${brand} absent from search`);
+}
+const all=planner.prioritised(analysed,'editorial',analysed.primaryQuery);
+assert.ok(all.length>=6);
+const late=planner.batchPlan(analysed,'editorial',analysed.primaryQuery,14);
+assert.ok(late.some(v=>v.page>=2),'Refresh must advance to later pages');
+console.log('PASS v9 story-first refresh: distinct editorial angles, compact API queries, subject hierarchy, new brand support, pagination');
