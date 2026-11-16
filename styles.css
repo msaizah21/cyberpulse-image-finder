@@ -48,3 +48,38 @@
 .footer-bottom-note{grid-column:1/-1;max-width:none!important;margin:0!important;border-top:1px solid rgba(139,158,191,.13);padding-top:14px;font-size:10px!important;color:#7f91ac!important}
 @media(max-width:780px){.footer{grid-template-columns:1fr;gap:22px}.footer-credit{max-width:490px}.footer-bottom-note{grid-column:1}}
 @media(max-width:530px){.brand-icon{width:43px;height:43px}.brand strong{font-size:16px;letter-spacing:.55px}.brand small{font-size:8px;letter-spacing:1.2px}.footer-brand-name span{display:block;margin:0}.footer-credit{padding:15px 13px}.footer-credit-copy strong{font-size:12px}}
+
+/* v4: opt-in on-device CLIP visual AI */
+.vision-panel{padding:23px 25px;margin:16px 0 21px;border-color:#315c68;background:linear-gradient(118deg,rgba(19,43,60,.93),rgba(15,24,48,.96))}
+.vision-top{display:flex;justify-content:space-between;align-items:start;gap:18px}.vision-top h3{margin:9px 0;font-size:19px;letter-spacing:-.5px}.vision-top p{color:#a6bed1;font-size:12px;line-height:1.7;max-width:800px;margin-bottom:13px}
+.vision-tag{flex:none;border:1px solid #407d83;border-radius:99px;color:#7ae3d6;font-size:9px;font-weight:780;letter-spacing:1px;padding:9px 12px}
+.vision-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:7px}.upload-label{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:0 16px;border:1px solid #426381;color:#e4f1ff;font-weight:730;font-size:12px;border-radius:9px;cursor:pointer;background:#14283e}
+.vision-status{margin:13px 0 0;font-size:11px;color:#a8bacf;line-height:1.6}.vision-status.error{color:#ffb4b4}.vision-status.working{color:#b2f4ea}
+.upload-vision-result{margin-top:12px;padding:12px 14px;border:1px solid #38716e;border-radius:9px;font-size:12px;color:#d9f4f0;background:#122e34}
+.vision-result{margin:9px 0 1px;border:1px solid #426183;background:#132b42;border-radius:9px;padding:9px 12px;font-size:11px;color:#c7edf2}
+.vision-result strong{font-size:14px;color:#80ebd2}.vision-result small{display:block;color:#9bb2ce;line-height:1.6;margin-top:4px}
+.vision-button{width:100%;margin-top:10px;border-radius:7px;background:#1c394d;color:#b4ebf6;padding:9px;border:1px solid #3f687d;font-size:11px;font-weight:700}
+.vision-button:hover{border-color:#91ded6}.vision-button:disabled{opacity:.55}
+.load-more-wrap{flex-wrap:wrap}.vision-analysis-note{font-size:11px;line-height:1.6;color:#a4bdd0}
+@media(max-width:680px){.vision-top{flex-direction:column}.vision-panel{padding:18px}.vision-tag{order:-1}}
+
+/* v4 structured result scores, titles, controls, accessible card layout */
+.suggestion-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.micro-note{color:#8396ac;font-size:10px}
+.headline-suggestions{display:flex;flex-direction:column;gap:8px}.headline-option{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:11px 11px;border-radius:8px;background:#14243a;border:1px solid #31435c}
+.headline-label{display:flex;align-items:flex-start;gap:10px;min-width:0}.headline-index{font-size:10px;font-weight:800;color:#75dbc9;flex:none;padding-top:1px}.headline-text{line-height:1.45;font-size:11px;color:#d5e4f6;overflow-wrap:anywhere}
+.use-title{font-size:10px;font-weight:750;background:#25475a;border:1px solid #417a82;padding:7px 11px;border-radius:7px;color:#dcffff;flex:none}.use-title:hover{background:#316476}
+.rating-explainer{font-size:11px;line-height:1.7;color:#aabdd1;margin:0 0 14px;padding:13px 16px;background:rgba(26,43,68,.69);border:1px solid #2e4662;border-radius:9px}
+.rating-explainer strong{color:#b7eadd}.results-controls .saved-toggle{height:36px;border:1px solid #416981;background:#172d43;color:#d4eaf7;padding:0 12px;font-size:11px;border-radius:8px;font-weight:750}
+.saved-toggle.active{background:#1a5250;border-color:#6bdfcf;color:#e2fff9}
+.favorite-button{position:absolute;right:11px;top:11px;z-index:1;background:rgba(11,26,43,.9);color:#e9f8ff;border:1px solid rgba(164,202,220,.45);border-radius:8px;padding:6px 9px;font-size:10px;font-weight:760;backdrop-filter:blur(8px)}
+.favorite-button.is-saved{color:#fce49c;border-color:#bdb27b}.image-badges{right:auto;max-width:calc(100% - 120px)}
+.match-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:3px 0 8px}
+.match-heading{display:flex;flex-direction:column;min-width:0;line-height:1.13}.score-number{font-size:28px;letter-spacing:-1.1px;color:#ecf8ff;font-weight:830;font-variant-numeric:tabular-nums}.score-label{font-size:8px;color:#9eb8d4;letter-spacing:.8px;line-height:1.5;font-weight:750;margin-top:2px}
+.score-tier{font-size:9px;max-width:145px;line-height:1.4;text-align:right;color:#a8b8cf;font-weight:700}.score-strong{color:#7cebd6}.score-good{color:#b8d9fa}.score-review{color:#e1caa0}
+.score-bar{height:6px;border-radius:10px;background:#26374e;overflow:hidden;margin-bottom:10px}.score-fill{height:100%;display:block;background:linear-gradient(90deg,#46c2b7,#81b5ff);border-radius:10px}
+.score-reason{font-size:11px;color:#b2c7db;margin:0 0 10px;min-height:32px;line-height:1.5}.score-breakdown{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+.score-breakdown span{font-size:9px;border:1px solid #34506b;background:#182d45;color:#b2cbe3;border-radius:6px;padding:5px 7px}
+.image-card .image-body h3{font-size:13px;margin:14px 0 9px;min-height:38px}.image-meta{justify-content:space-between}
+.load-more-wrap{display:flex;align-items:center;justify-content:center;gap:13px;margin-top:24px}.load-more-wrap span{flex-basis:100%;text-align:center;font-size:11px;color:#8ea3be}
+#deep-search{min-height:43px}.image-grid{align-items:stretch}.image-card{display:flex;flex-direction:column}.image-card .image-body{display:flex;flex:1;flex-direction:column}.image-card .card-actions{margin-top:auto}
+@media(max-width:620px){.headline-option{align-items:flex-start}.score-number{font-size:25px}.match-row{align-items:flex-start}.results-controls{width:100%}.result-counter{display:block;margin-left:0;margin-top:4px}.load-more-wrap .button{width:100%}.suggestion-heading{align-items:start;flex-direction:column}}

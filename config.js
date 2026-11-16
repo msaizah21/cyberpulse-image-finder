@@ -1,3 +1,8 @@
-/* Optional: paste your Cloudflare Worker URL here after configuring Pixabay.
-   Keep PRIVATE API keys in the Worker secret, never in this file. */
-window.CyberPulseConfig = { pixabayWorkerUrl: '' };
+/* OPTIONAL image sources. Public GitHub Pages code NEVER contains photo API keys.
+ * Deploy stock-worker-OPTIONAL.js to Cloudflare and paste its public URL below.
+ * For existing deployments, the old pixabayWorkerUrl remains supported.
+ */
+window.CyberPulseConfig = {
+  stockWorkerUrl: '',
+  pixabayWorkerUrl: ''
+};

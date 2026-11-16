@@ -1,0 +1,17 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const context={window:{}};
+for(const file of ['analysis.js','relevance.js','vision.js'])vm.runInNewContext(fs.readFileSync(file,'utf8'),context);
+const article=context.window.CyberPulseAnalyzer.analyseArticle('', 'A ransomware attack disabled computer systems at hospitals. Hackers encrypted patient records and demanded ransom payments.');
+assert.ok(article.titleSuggestions.length>=2,'Headlines should be suggested when title is empty');
+assert.ok(article.titleSuggestions.every(x=>x.length<=100),'Headlines should not be long paragraphs');
+const withPhotos={id:'test', title:'Hospital computers',tags:'server computer hospital technology',width:3840,height:2160,kind:'photograph'};
+const withoutPhotos={...withPhotos,title:'Mountain meadow',tags:'flower fields hills panorama',width:3840,height:2160};
+const match=context.window.CyberPulseRelevance.estimate(withPhotos,'hospital computer server',article);
+const unrelated=context.window.CyberPulseRelevance.estimate(withoutPhotos,'hospital computer server',article);
+assert.ok(match.score>unrelated.score,'Relevant metadata should rank higher');
+const visual=context.window.CyberPulseVision.candidates(article);
+assert.ok(visual.labels.length>=6,'Vision should compare article prompts with unrelated controls');
+assert.equal(context.window.CyberPulseVision.combineScore(60,80),68);
+console.log('PASS headlines, metadata ranking, vision prompt candidates and score blend');

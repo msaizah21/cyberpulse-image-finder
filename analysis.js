@@ -145,6 +145,45 @@
     };
   }
 
+
+  // Conservative, no-API editorial headline drafts based solely on explicit story wording.
+  // Never invents a company, action, incident, date or statistic.
+  function suggestHeadlines(rawTitle, body, category, entity) {
+    const clean = value => String(value||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    const originalTitle=clean(rawTitle);
+    const prose=clean(body);
+    const lines=String(body||'').split(/\n/).map(clean).filter(x=>x.length>=18&&x.length<=160);
+    const sentences=(prose.match(/[^.!?]+(?:[.!?]+|$)/g)||[]).map(clean)
+      .filter(x=>x.length>=20&& !/^(according to|in this article|this report discusses|this article explores)\b/i.test(x));
+    function headline(text){
+      let t=clean(text).replace(/^(breaking(?: news)?|latest(?: update)?|news|update)\s*[:–-]\s*/i,'')
+        .replace(/^[“\"'‘]+/,'').replace(/[.!?\s”\"'’]+$/,'');
+      if(t.length>100){
+        t=t.split(/[,;:]/)[0].trim() || t;
+        if(t.length>100)t=t.slice(0,97).replace(/\s+\S*$/,'').trim();
+      }
+      return t[0]?.toUpperCase()+t.slice(1);
+    }
+    const output=[];
+    function add(value){
+      const t=headline(value);
+      if(!t||t.length<18)return;
+      // Avoid a full paragraph suggestion and near duplicate prefix variations.
+      const norm=t.toLowerCase().replace(/[^a-z0-9]/g,'');
+      if(output.some(s=>{const x=s.toLowerCase().replace(/[^a-z0-9]/g,'');return x===norm||x.startsWith(norm)||norm.startsWith(x);} ))return;
+      output.push(t);
+    }
+    if(originalTitle)add(originalTitle);
+    if(!originalTitle && lines[0] && !/[.!?].+[.!?]/.test(lines[0]))add(lines[0]);
+    for(const sentence of sentences.slice(0,7))if(output.length<3)add(sentence);
+    if(output.length<3)for(const line of lines.slice(0,5))if(output.length<3)add(line);
+    // A category-framed variation is always rooted in an existing, explicit headline.
+    const base=output[0];
+    if(base && output.length<4 && category && !base.toLowerCase().startsWith(category.toLowerCase()))add(`${category}: ${base}`);
+    if(base && output.length<4 && entity && !base.toLowerCase().startsWith(entity.toLowerCase()))add(`${entity}: ${base}`);
+    return output.slice(0,4);
+  }
+
   function analyseArticle(title, article) {
     const parsed=normalizeInput(title,article);
     const headline = parsed.title.toLowerCase().slice(0, 260);
@@ -185,7 +224,9 @@
     return {
       primary: primary.name, symbol: primary.symbol, confidence, reason,
       other: secondary.map(c=>c.name), searches,
-      matchedKeywords: reasons, inferredTitle: parsed.title, ...plan
+      matchedKeywords: reasons, inferredTitle: parsed.title,
+      titleSuggestions: suggestHeadlines(title, article, primary.name, plan.entity),
+      ...plan
     };
   }
 

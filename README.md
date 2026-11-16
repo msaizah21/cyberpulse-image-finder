@@ -1,93 +1,121 @@
-# CyberPulse Image Finder — v2 (Article → Category → Banner Photos)
+# CyberPulse Studio v4 — Advanced Stock Image Finder + Free Browser Vision AI
 
-A standalone, public, GitHub Pages-compatible tool for CyberPulse editorial staff. Paste **only the article text** or a separate title and body. The interface will immediately recommend a category, identify important company/product/topic clues, search photo sources, and display **16:9 banner previews** before publication.
+**Created for:** CyberWaze editorial team | **Made by Aiza Sajid, CyberWaze**  
+**For editorial work on:** https://cyberpulsemag.com/articles/  
+**GitHub repository to update:** https://github.com/msaizah21/cyberpulse-image-finder  
+**Expected website:** https://msaizah21.github.io/cyberpulse-image-finder/
 
-**Designed for:** https://cyberpulsemag.com/articles/  
-**GitHub repository:** https://github.com/msaizah21/cyberpulse-image-finder  
-**Expected GitHub Pages site:** https://msaizah21.github.io/cyberpulse-image-finder/
+A lightweight, dark-theme website that runs on **GitHub Pages**, with no npm, backend or paid AI API required for the basic version. The user-supplied CyberPulse and CyberWaze logos are included in `assets/`.
 
-## Official project branding
+## What this version actually does
 
-This version uses the user-supplied CyberPulse symbol in the header, main hero graphic, footer and favicon, and the user-supplied CyberWaze symbol in a small footer credit.
+| Feature | Details |
+| --- | --- |
+| **Article-only entry** | Paste a full story with the title field empty. Get up to four factual, text-grounded editorial headline ideas and a category suggestion. Choose **Use** to fill the title field. |
+| **Article analysis** | Detects relevant cybersecurity categories, recognizable organizations/products, context-driven stock concepts and search terms. Local rule-based analysis: it does **not** call an LLM or upload the article. |
+| **Search results** | Search licensed Openverse photographs without an API key, or optionally connect professional-stock APIs through a secure Cloudflare Worker. Provider availability, CORS and daily quota affect actual results. |
+| **Fresh results / deep search** | **Fresh results** retrieves subsequent provider pages instead of resetting to the first page. **Deep search · 3 batches** iterates three sequential batches. Duplicates are removed within the current search. Editing search words and pressing Enter starts a brand-new search. |
+| **Professional photo focus** | Prefer wide, high-resolution photos. Filter out illustrations, logos, vectors, screenshots and low-resolution imagery when descriptions and dimensions permit. **The default free Openverse source cannot guarantee professional-stock quality; the optional Pexels/Pixabay Worker provides true stock-photo libraries.** |
+| **Article Match %** | Initially scores a photo using its title/tags, topic overlap, resolution, and suitability for 16:9 featured-image cropping. This is a transparent editorial estimate, not a scientific probability. |
+| **Free pixel-based vision AI** | Optional **AI check actual photo pixels** or **AI scan top 3 photos**. Uses open-source [CLIP](https://huggingface.co/Xenova/clip-vit-base-patch32) via [Hugging Face Transformers.js](https://huggingface.co/docs/transformers.js) directly in the visitor's browser. No paid inference API. |
+| **Visual affinity** | Once scanned, shows pixel-based relative affinity to tested visual prompts, and updates Article Match % to **60% metadata score + 40% visual affinity**. This is a ranking heuristic, **not a probability that an image depicts a news event**. |
+| **Upload-to-scan fallback** | External providers can block CORS, preventing direct AI reading of their images. Download the source image from its provider and upload a JPG/PNG/WebP (max 12MB) to scan privately in the browser. |
+| **Daily-use editor tools** | Save favourites in browser storage, filter by match/source/rights, sort by score or resolution, preview 16:9 crop, open original provider, attempt to download, and copy attribution. |
 
-**Visible credit:** “Made by Aiza Sajid, CyberWaze” and “Built for the CyberWaze team.”
+## Deploy this ZIP to the existing GitHub repository
 
-The new `/assets` folder is **required**: upload it alongside `index.html`, `styles.css`, `app.js` and the other top-level files. No separate image hosting or API is needed for the logos. This change only affects branding; it preserves the existing article analysis and image-search behavior.
+1. Download and **extract** this ZIP. Upload its **contents** (not the ZIP itself) to the **root** of the repo: https://github.com/msaizah21/cyberpulse-image-finder
+2. On GitHub choose **Add file → Upload files** and upload `index.html`, `styles.css`, `app.js`, `analysis.js`, `relevance.js`, `vision.js`, `config.js`, `README.md`, both optional Worker scripts, favicon assets, `.nojekyll`, `assets/`, and `tests/`. Overwrite the older files where GitHub asks.
+3. Commit e.g. `Upgrade CyberPulse Studio with free image vision AI`.
+4. To enable GitHub Pages: **Settings → Pages → Deploy from branch → main → /(root)**.
+5. Open the GitHub Pages URL above. If it looks old, hard refresh with Ctrl+Shift+R.
 
-## What improved in v2
+Do not upload the ZIP as a single file or nest all files inside an extra subfolder.
 
-- **Fixed a real bug:** the old category fallback referenced an object without `signals`, so articles with few known keywords could fail during analysis.
-- **Paste-only input works:** if no title is entered, the tool derives a provisional headline from the pasted article.
-- **Brand/product recognition:** NVIDIA/GPU/Blackwell, Microsoft, Google, OpenAI, Apple, AWS, Intel, AMD, CrowdStrike, Cisco, Meta, Palo Alto Networks, Samsung, Cloudflare, and Oracle.
-- **Two distinct search intents:**
-  - **Exact subject/company** — relevant original photos, company buildings and product hardware; filters out other brands when a named company is detected.
-  - **Professional stock concept** — modern landscape technology photos (chipsets, GPUs, data centers, etc.), labelled as *illustrative* instead of a photo of the actual event.
-- **Editorial orientation filter:** wide photos preferred; small, portrait, icon/vector and irrelevant results are downranked or removed.
-- **16:9 featured image preview** and original-source link for each result.
-- **Clear search fallbacks:** Openverse and Wikimedia Commons plus links for Pexels, Unsplash and Pixabay. Optional Pixabay Worker for higher-quality photos **inside** the website.
+## Everyday editorial workflow
 
-### Important: This is not a ChatGPT/LLM API
+1. Paste the article into **Article text**. The title can remain empty. Click **Analyse article & discover photos** (Ctrl+Enter also works in the article box).
+2. Review the category and choose an article-ready title. Adjust the generated search phrase if the stock results are too generic.
+3. Click **Fresh results** as often as needed, or **Deep search · 3 batches**. Each batch uses additional provider pages and context-aware search phrases. Quotas and finite search results still apply; these controls are **not infinite**.
+4. Click **AI check actual photo pixels** on a suitable image or **AI scan top 3 photos**. Only do this when needed; model initialization requires a large download. The first request can be slow or fail on low-powered devices or blocked networks.
+5. Look at **estimated Article Match %** and **Vision AI visual affinity**, then independently verify visual truth, publisher licence, and editorial context.
+6. Preview the 16:9 crop, save your choice, and download the original from its source for WordPress. **This utility does not publish to WordPress.**
 
-Category selection and photo queries use a **local rules-based analyser**. It is fast, free to host, and runs without your article leaving the browser, but editorial human review is still necessary. A name/product/photo match is not guaranteed for every story.
+### What free vision AI does — and does not do
 
-## Replace the existing code in your GitHub repository
+- Transformers.js loads the `Xenova/clip-vit-base-patch32` model on demand from Hugging Face/CDN, with quantized ONNX weights and WebAssembly inference. It does **not** use a paid OpenAI/Anthropic/Gemini image API.
+- CLIP compares a photo against multiple text prompts made from the article's **photo concepts** plus unrelated controls. The resulting visual affinity is a **relative classification score**, **not a calibrated probability**, a recognition of a specific person/product, or factual verification.
+- **The full article stays local**. Image *search keywords* are sent to the photo libraries. For image-vision scoring, pretrained code/weights are downloaded first; photo pixels are processed on-device and not sent to an inference service. Fetching an image from its host still sends a normal network request to that photo host.
+- Some stock domains deny cross-origin requests. If direct AI scan fails, the app displays a specific error and offers the file-upload fallback. **Do not disable browser security or use random proxy sites.**
+- Vision runtime and live provider results depend on the user's browser/network. They were **not validated end-to-end against the live third-party model/CDNs in the build environment**; the static app and simulated provider/vision UI flows were browser-smoke-tested.
 
-1. Download and **extract** the latest ZIP. Do **not** upload the ZIP as one GitHub file.
-2. Go to: https://github.com/msaizah21/cyberpulse-image-finder
-3. Click **Add file → Upload files**.
-4. Upload **all files from the extracted project folder**, including the `assets` folder, directly to the repo root. If GitHub detects existing files of the same names (`index.html`, `app.js`, `analysis.js`, `styles.css`, `README.md`), GitHub will update them in this commit.
-5. Commit message: `Improve article analysis and banner images` → **Commit changes**.
-6. If GitHub Pages has not been set up: **Settings → Pages → Deploy from a branch → main → /(root) → Save**. The repository must be eligible for GitHub Pages (a public repo works on GitHub Free).
-7. When deployment succeeds, open the expected Pages URL: https://msaizah21.github.io/cyberpulse-image-finder/
-8. If the old page remains, do a hard refresh (Windows: `Ctrl + Shift + R`) to clear browser cache.
+## Optional: show TRUE professional stock images in the results grid
 
-**Important GitHub note:** The main `index.html` file must be at the **top level of your repository**, not inside a nested folder. The new version is static and does **not** require Flask, Python, npm, or Render to be hosted on GitHub Pages.
+The free default Openverse API provides photographs under various Creative Commons licences. It may return unsuitable photos. **To get curated professional stock results inside the grid, connect a Pexels and/or Pixabay API credential using `stock-worker-OPTIONAL.js`**, *without ever committing a key to public GitHub*.
 
-## How an editor uses the app
-
-1. Paste the article in **Article text**. Leave **Article title** empty if desired.
-2. Click **Analyse & find images**; category appears without waiting for the external image APIs.
-3. For a company or product article, use **Exact subject/company** for subject-specific imagery. For a more generic visual, choose **Professional stock concept**.
-4. Switch search phrases or type your own keywords if needed. Use **Preview 16:9** to see a WordPress-style article-banner crop.
-5. Check the photo's original creator page and licence; download from the provider or original page, then upload to WordPress. **The tool does not change your WordPress website.**
-
-## Image sources & licensing
-
-**Without any key:** Openverse and Wikimedia Commons return openly licensed media where their browser-accessible APIs are available. Images may be old, low quality, unavailable or not the specific article subject; sources impose their own rate limits. The site also shows external links for **Pexels**, **Unsplash** and **Pixabay** search results. These are website links, **not** integrated image previews by default.
-
-**Optional richer in-app photos:** Pixabay provides a photo-search API that requires an API key. The ZIP includes `pixabay-worker-OPTIONAL.js`, a small Cloudflare Worker that keeps the key on a server and feeds landscape photos to the site. This is optional; your public GitHub Pages website works without it.
-
-- The photo's label or search result is **not** permission to use it for every purpose. Confirm the exact source terms.
-- CC BY licences generally require attribution. CC BY-SA can impose share-alike obligations for adaptations. CC0/public domain claims still deserve source verification.
-- Pixabay uses its **own Content License**, not CC0; some restrictions still apply.
-- Company logos, buildings, brands, and photographs can implicate additional trademark, publicity and editorial context issues. Never caption a concept image as a photograph of a real incident.
-- Direct downloads may be blocked by image hosts; in this case the tool opens the original photo page instead of falsely reporting a download.
-- Article text stays in the visitor's browser; **short image queries** go to the image services.
-
-## Optional: Enable more polished Pixabay photos *inside* results
-
-You can skip this entire section initially.
-
-1. Get a Pixabay API key from https://pixabay.com/api/docs/ (an account/API access is required).
-2. In Cloudflare, create a **Worker**, paste the contents of `pixabay-worker-OPTIONAL.js`, and deploy it.
-3. In Cloudflare Worker settings, add an encrypted **secret** named `PIXABAY_API_KEY` with the Pixabay key as its value. Re-deploy if needed.
-4. Copy your Cloudflare Worker URL (for example, `https://your-worker.your-subdomain.workers.dev/`).
-5. Edit GitHub file `config.js` and change the empty string to that URL:
+1. Register at the provider, check whether free API access is presently offered, and obtain an eligible API key. Pexels key issuance/limits and Pixabay API availability can change.
+2. Create a Cloudflare Worker and paste the entire `stock-worker-OPTIONAL.js` source as its Worker code.
+3. Add encrypted secrets in Worker Settings: `PIXABAY_API_KEY` and/or `PEXELS_API_KEY` (use what you have). Set an environment variable `ALLOWED_ORIGIN=https://msaizah21.github.io` (adjust if hosted on another domain).
+4. Deploy the Worker, enable reasonable rate limits to prevent abuse of a public endpoint, and copy its Worker URL.
+5. In your GitHub repository edit `config.js`:
 
    ```js
-   window.CyberPulseConfig = { pixabayWorkerUrl: 'https://your-worker.your-subdomain.workers.dev/' };
+   window.CyberPulseConfig = {
+     stockWorkerUrl: 'https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/',
+     pixabayWorkerUrl: ''
+   };
    ```
 
-6. Commit the update. Results then include Pixabay photos where available. Your **API key must never be committed to GitHub**. A public Worker endpoint can consume API quota; apply usage protections or rate limits if you expect substantial public traffic.
+6. Commit the change. Search will **prefer the actual stock providers instead of Openverse** if `stockWorkerUrl` is configured. If that Worker fails, the UI will show a provider error; it does not pretend to have stock results.
 
-Pexels' API has currently paused issuance of new keys, so the basic tool does not depend on it. Its public photo-search site remains a fallback link.
+**Safety note:** Cloudflare Worker routes are public even with an origin restriction, so add Worker-side rate limiting / bot protection for production use, especially for shared high-traffic editorial workflows. Browser CORS is not authentication. Keep API keys encrypted in Worker secrets.
 
-## Developer validation
+The ZIP also retains `pixabay-worker-OPTIONAL.js` as a legacy compatibility option for anyone who already deployed the older single-provider Worker. **Do not configure both workers at the same time.**
 
-- JavaScript syntax check: `node --check analysis.js && node --check app.js`
-- Unit test for article/category/entity/query selection: `node tests/test-analysis.cjs` (run from the repository root).
-- No build process, API secrets, backend database or WordPress integration required for the default version.
+## Source licences & publishing review
 
-## CyberPulse categories
+- **Openverse** indexes openly licensed media, but specific licences can require attribution and share-alike; publisher and creator rights need verification. Not all images are professional stock.
+- **Pexels** and **Pixabay** use their own content licences with restrictions. Verify the current provider licence at source; **do not infer unrestricted rights from a result**.
+- Filtering by photograph, aspect ratio and keywords uses metadata and is imperfect. Some photos may be conceptual or misleading for breaking news.
+- A related stock photo should be captioned as an **illustrative stock image**. Never imply it shows a specific cyberattack, victim, product, building, or company without verifying the original source.
+- Image downloads may fail because of host-side restrictions; in that case the app opens the official source page for safe manual download.
 
-Uses the **10 names included in the original request**: AI & Cybersecurity; Cloud Security; Cybersecurity; Cybersecurity News & Threats; Data Breaches; Malware; Malware & Threats; Phishing; Ransomware; Trojan. The request mentioned 13 items but only these 10 names were provided. Adjust `analysis.js` if the actual taxonomy changes.
+## Files in this ZIP
+
+```text
+index.html                    Main website
+styles.css                    Responsive dark design
+app.js                        Search, deep refresh, results, favourites, ranking, previews
+analysis.js                   Article category and headline suggestions
+relevance.js                  Transparent metadata ranking
+vision.js                     FREE local CLIP browser image vision
+config.js                     OPTIONAL Worker URL, no secrets
+stock-worker-OPTIONAL.js      Cloudflare Worker for Pexels/Pixabay (encrypted secrets)
+pixabay-worker-OPTIONAL.js    Legacy single-provider Worker
+assets/                       CyberPulse and CyberWaze logos
+favicon.png, favicon.svg      Branding
+.nojekyll                     GitHub Pages support
+tests/                        Developer tests
+```
+
+## Developer tests
+
+```bash
+node --check analysis.js
+node --check app.js
+node --check relevance.js
+node --check vision.js
+node --check stock-worker-OPTIONAL.js
+node tests/test-analysis.cjs
+node tests/test-relevance.cjs
+```
+
+A browser smoke test was also run against simulated Openverse results and a stubbed CLIP inference response: category, titles, cards, fresh paging, saved items and score refresh all worked without browser console exceptions. This **does not** certify actual third-party provider API responses or live CLIP downloads.
+
+### Technical source references
+
+- [Transformers.js zero-shot image classification pipeline](https://huggingface.co/docs/transformers.js/api/pipelines)
+- [CLIP model repository and licence](https://huggingface.co/Xenova/clip-vit-base-patch32)
+- [Openverse API](https://api.openverse.org/v1/)
+- [Pexels API](https://www.pexels.com/api/)
+- [Pixabay API](https://pixabay.com/api/docs/)
