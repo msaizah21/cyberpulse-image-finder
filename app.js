@@ -1,6 +1,6 @@
-/* CyberPulse Studio v3 — client-only article analysis, real paged image APIs.
- * Stock API keys belong ONLY in the optional Worker, never on GitHub Pages.
- * Optional CLIP vision compares image pixels to article photo concepts. */
+/* CyberPulse Studio v5 — dependable, free/no-key editorial image discovery.
+ * Fetches Openverse and Wikimedia Commons independently with real pagination.
+ * Optional CLIP scans pixels; search never relies on the vision model. */
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
@@ -31,9 +31,7 @@
   function updateLinks(){
     const q=currentQuery||analysis?.stockSearches?.[0]||'cybersecurity technology';
     $('open-openverse').href=`https://openverse.org/search/image?q=${encodeURIComponent(q)}`;
-    $('open-pexels').href=`https://www.pexels.com/search/${encodeURIComponent(q)}/`;
-    $('open-unsplash').href=`https://unsplash.com/s/photos/${encodeURIComponent(q.replaceAll(' ','-'))}`;
-    $('open-pixabay').href=`https://pixabay.com/images/search/${encodeURIComponent(q)}/`;
+    $('open-commons').href=`https://commons.wikimedia.org/w/index.php?title=Special:MediaSearch&type=image&search=${encodeURIComponent(q)}`;
   }
   function renderChips(id,phrases){
     const container=$(id);container.replaceChildren();
@@ -66,13 +64,12 @@
     const q=result.stockSearches?.[0]||result.primaryQuery;
     queryInput.value=q;
     $('visual-context-copy').textContent=result.entity
-      ?`Article mentions ${result.entity}. Searching high-resolution stock concepts linked to the subject, not falsely labelled photos of the company or incident.`
-      :'Searching landscape stock-photo concepts aligned with the article subject. Every score is an editorial estimate.';
+      ?`Article mentions ${result.entity}. Searching photographs linked to the subject, not falsely labelled photos of the company or incident.`
+      :'Searching relevant photographs from two free image libraries. Every score is an editorial estimate.';
     updateLinks();
   }
   function isPublicLicense(raw){const s=String(raw||'').toLowerCase();return /cc0|public.?domain|\bpdm\b|^pd$/.test(s);}
   function acceptedLicense(item){
-    if(['Pexels','Pixabay'].includes(item.source))return licenseFilter.value!=='credit';
     const lic=String(item.license||'').toLowerCase().replace(/\s+/g,'');
     if(!lic||/noncommercial|noderivatives|by-nc|by-nd|nc-|nd-/.test(lic))return false;
     const good=isPublicLicense(lic)||lic==='by'||lic==='by-sa'||lic.startsWith('ccby')||lic.startsWith('cc-by')||lic.includes('attribution');
@@ -82,56 +79,75 @@
     return true;
   }
   function normalizeOpenverse(d){
-    return {id:'ov:'+d.id,source:'Openverse',title:d.title||'Untitled photograph',tags:(d.tags||[]).slice(0,26).map(t=>typeof t==='string'?t:t.name||'').join(' '),
+    return {id:'ov:'+d.id,source:'Openverse',title:d.title||'Untitled photograph',tags:(d.tags||[]).slice(0,26).map(t=>typeof t==='string'?t:t?.name||'').join(' '),
       creator:d.creator||'Unknown photographer',imageUrl:safeUrl(d.url),thumbnail:safeUrl(d.thumbnail)||safeUrl(d.url),
       sourceUrl:safeUrl(d.foreign_landing_url)||safeUrl(d.detail_url)||safeUrl(d.url),
       license:String(d.license||'').toLowerCase(),licenseUrl:safeUrl(d.license_url),attribution:d.attribution||'',
       width:Number(d.width)||0,height:Number(d.height)||0,mime:String(d.filetype||''),kind:String(d.category||'photograph')};
   }
+  async function getJson(url,signal){
+    const controller=new AbortController();
+    const stop=()=>controller.abort();
+    signal?.addEventListener('abort',stop,{once:true});
+    const timeout=setTimeout(stop,12500);
+    try{
+      const response=await fetch(url,{signal:controller.signal,headers:{Accept:'application/json'}});
+      if(!response.ok)throw Error(`Image library returned ${response.status}`);
+      return await response.json();
+    }finally{clearTimeout(timeout);signal?.removeEventListener('abort',stop);}
+  }
   async function searchOpenverse(q,page,signal){
     const url=new URL('https://api.openverse.org/v1/images/');
     url.searchParams.set('q',short(q));url.searchParams.set('page_size','20');url.searchParams.set('page',String(page));
     url.searchParams.set('license','cc0,pdm,by,by-sa');url.searchParams.set('mature','false');
-    url.searchParams.set('filter_dead','true');url.searchParams.set('aspect_ratio','wide');url.searchParams.set('category','photograph');
-    const response=await fetch(url.href,{signal,headers:{Accept:'application/json'}});
-    if(!response.ok)throw Error(`Openverse ${response.status}`);
-    const data=await response.json();if(!Array.isArray(data.results))throw Error('Invalid Openverse result');
+    // Do NOT restrict to 'wide' and 'photograph' at the API: sparse cyber topics can yield zero results.
+    // Rank/select in the browser instead so the tool still shows useful choices.
+    const data=await getJson(url.href,signal);
+    if(!Array.isArray(data.results))throw Error('Image library sent an invalid response');
     return data.results.map(normalizeOpenverse);
   }
-  function normalizeWorkerItem(x){
-    // New Worker sends normalized {images:[]}; no full article or credentials are sent to it.
-    return {id:String(x.id||''),source:String(x.source||''),title:String(x.title||'Professional stock photo'),
-      tags:String(x.tags||''),description:String(x.description||''),creator:String(x.creator||'Photographer'),
-      imageUrl:safeUrl(x.imageUrl),thumbnail:safeUrl(x.thumbnail),sourceUrl:safeUrl(x.sourceUrl),
-      license:String(x.license||''),licenseUrl:safeUrl(x.licenseUrl),attribution:String(x.attribution||''),
-      width:Number(x.width)||0,height:Number(x.height)||0,mime:'image/jpeg',kind:'photograph'};
+  function stripHtml(html){
+    const doc=new DOMParser().parseFromString(String(html||''),'text/html');
+    return (doc.body.textContent||'').replace(/\s+/g,' ').trim();
   }
-  async function searchStockWorker(q,page,signal){
-    const worker=safeUrl(window.CyberPulseConfig?.stockWorkerUrl||'');if(!worker)return [];
-    const url=new URL(worker);url.searchParams.set('q',short(q));url.searchParams.set('page',String(page));
-    const response=await fetch(url.href,{signal,headers:{Accept:'application/json'}});
-    if(!response.ok)throw Error(`Stock photo provider ${response.status}`);
-    const data=await response.json();if(!Array.isArray(data.images))throw Error('Invalid stock photo response');
-    return data.images.map(normalizeWorkerItem);
+  function normalizeCommons(page){
+    const info=page.imageinfo?.[0];if(!info)return null;
+    const meta=info.extmetadata||{};
+    const field=name=>stripHtml(meta[name]?.value||'');
+    const license=field('LicenseShortName')||field('UsageTerms');
+    return {id:'wm:'+page.pageid,source:'Wikimedia Commons',
+      title:String(page.title||'').replace(/^File:/i,'').replace(/\.[^.]{2,6}$/,'').replaceAll('_',' '),
+      tags:`${field('ImageDescription')} ${field('ObjectName')}`.slice(0,350),
+      creator:field('Artist').slice(0,120)||'Wikimedia contributor',
+      thumbnail:safeUrl(info.thumburl)||safeUrl(info.url),imageUrl:safeUrl(info.url),
+      sourceUrl:safeUrl(info.descriptionurl)||`https://commons.wikimedia.org/wiki/${encodeURIComponent(String(page.title||'').replaceAll(' ','_'))}`,
+      license,licenseUrl:safeUrl(meta.LicenseUrl?.value)||'',attribution:'',
+      width:Number(info.width)||0,height:Number(info.height)||0,mime:String(info.mime||''),kind:'photograph'};
   }
-  async function searchLegacyPixabay(q,page,signal){
-    const worker=safeUrl(window.CyberPulseConfig?.pixabayWorkerUrl||'');if(!worker)return [];
-    const url=new URL(worker);url.searchParams.set('q',short(q));url.searchParams.set('page',String(page));
-    const response=await fetch(url.href,{signal,headers:{Accept:'application/json'}});
-    if(!response.ok)throw Error(`Pixabay ${response.status}`);
-    const data=await response.json();if(!Array.isArray(data.hits))throw Error('Invalid Pixabay response');
-    return data.hits.map(x=>normalizeWorkerItem({id:'px:'+x.id,source:'Pixabay',title:x.tags||'Professional stock photo',
-      tags:x.tags,creator:x.user,thumbnail:x.webformatURL||x.previewURL,imageUrl:x.largeImageURL||x.webformatURL,
-      sourceUrl:x.pageURL,license:'Pixabay Content License',licenseUrl:'https://pixabay.com/service/license-summary/',width:x.imageWidth,height:x.imageHeight}));
+  async function searchCommons(q,page,signal){
+    const url=new URL('https://commons.wikimedia.org/w/api.php');
+    const parameters={action:'query',generator:'search',gsrsearch:short(q)+' filetype:bitmap',
+      gsrnamespace:'6',gsrlimit:'20',gsroffset:String((page-1)*20),
+      prop:'imageinfo',iiprop:'url|size|extmetadata|mime',iiurlwidth:'720',
+      format:'json',formatversion:'2',origin:'*'};
+    Object.entries(parameters).forEach(([key,value])=>url.searchParams.set(key,value));
+    const data=await getJson(url.href,signal);
+    return (data.query?.pages||[]).map(normalizeCommons).filter(Boolean);
+  }
+  function sourceJobs(phrase,page,signal){
+    return [
+      {name:'Openverse',promise:searchOpenverse(phrase,page,signal)},
+      {name:'Wikimedia Commons',promise:searchCommons(phrase,page,signal)}
+    ];
   }
   function isPhoto(item){
     if(!item.id||!item.imageUrl||!item.thumbnail||!item.sourceUrl)return false;
-    if(!['Pexels','Pixabay','Openverse'].includes(item.source))return false;
-    if(item.kind && item.kind!=='photograph')return false;
-    if(/svg|\.gif\b/i.test(item.mime||''))return false;
-    if(graphicTerms.test(`${item.title} ${item.tags} ${item.description||''}`))return false;
-    if(item.width && item.width<1200)return false;
-    if(item.height && item.width/item.height<1.36)return false;
+    if(!['Openverse','Wikimedia Commons'].includes(item.source))return false;
+    if(item.kind==='illustration'||/svg|gif/i.test(item.mime||''))return false;
+    const details=`${item.title} ${item.tags||''}`;
+    if(graphicTerms.test(details))return false;
+    // Prefer professional-quality wide photography, but do not discard valid editorial photos.
+    // A low-resolution image is still a visible choice, clearly identified on its card.
     return acceptedLicense(item);
   }
   function rated(item,query){
@@ -148,7 +164,7 @@
     updateSavedCount();renderGrid();
   }
   function setPending(value){pending=value;$more.disabled=value;$deep.disabled=value;$('refresh-search').disabled=value;
-    $more.textContent=value?'Searching photo libraries…':'↻ Find more new photos';}
+    $more.textContent=value?'Searching free image libraries…':'↻ Find more new photos';}
   function toggleSaved(){onlySaved=!onlySaved;$('saved-toggle').setAttribute('aria-pressed',String(onlySaved));
     $('saved-toggle').classList.toggle('active',onlySaved);renderGrid();}
   function renderGrid(){
@@ -158,67 +174,75 @@
     filtered.sort((a,b)=>sortFilter.value==='resolution'?(b.width*b.height-a.width*a.height)||(b.match.score-a.match.score):
       (b.match.score-a.match.score)||(b.width*b.height-a.width*a.height));
     if(filtered.length){grid.replaceChildren(...filtered.map(renderCard));show(grid,true);show(state,false);}
-    else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No matching photos in this batch',
-      onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try a lower match threshold or search a different photo concept.');}
+    else if(!pending){resetState(onlySaved?'No saved photos for these filters':'No photos match the selected filters',
+      onlySaved?'Save a photo by tapping the star, or adjust your match/source filters.':'Try All rated, All sources and Eligible licences; then search again.');}
     $('result-counter').textContent=`${filtered.length} displayed · ${allImages.length} discovered`;
     show($('load-more-wrap'),Boolean(analysis)&&!onlySaved);
     $('load-more-status').textContent=batch?`Batch ${batch} explored · duplicates hidden · ${allImages.length} unique photos found`:'Each click explores additional results and avoids duplicates';
     updateSavedCount();
   }
   async function runSearch(q,{append=false}={}){
-    const query=short(q);if(!query){toast('Enter a photo search phrase first.');return;}
+    const query=short(q);if(!query){toast('Enter search keywords first.');return;}
     if(pending)return;
     if(!analysis){toast('Please analyse an article first.');return;}
-    if(!append ||query!==activeQuery){
+    if(!append||query!==activeQuery){
       pendingController?.abort();activeQuery=query;batch=0;seen=new Set();allImages=[];
-      resetState('Finding story-related photographs…','Searching fresh landscape images and checking licences, resolution and article relevance.');
+      resetState('Finding photos for your story…','Checking Openverse and Wikimedia Commons. No login or API key needed.');
       $('result-counter').textContent='';
     }
     currentQuery=query;queryInput.value=query;updateLinks();
     pendingController?.abort();const pendingNow=new AbortController();pendingController=pendingNow;setPending(true);
     const next=batch+1;
-    const choices=[query,...(analysis.stockSearches||[]).filter(w=>w.toLowerCase()!==query.toLowerCase())].slice(0,4);
-    // Advance actual provider pages and alternate article-aware search terms.
-    const idx=Math.floor((next-1)/10)%choices.length;
-    const usedQueries=[choices[idx]];
-    if(choices.length>1)usedQueries.push(choices[(idx+1)%choices.length]);
-    const page=((next-1)%10)+1;
-    const services=[];
-    for(const phrase of usedQueries){
-      if(window.CyberPulseConfig?.stockWorkerUrl)
-        services.push({provider:'Professional stock',query:phrase,promise:searchStockWorker(phrase,page,pendingNow.signal)});
-      else if(window.CyberPulseConfig?.pixabayWorkerUrl)
-        services.push({provider:'Pixabay',query:phrase,promise:searchLegacyPixabay(phrase,page,pendingNow.signal)});
-      else services.push({provider:'Openverse',query:phrase,promise:searchOpenverse(phrase,page,pendingNow.signal)});
-    }
+    const choices=[...new Set([query,...(analysis.stockSearches||[]),...(analysis.editorialSearches||[])].map(short).filter(Boolean))].slice(0,8);
+    // Four actual pages per phrase, then rotate to a different article-related phrase.
+    // Once all phrases are explored, return to those phrases at later pages.
+    const block=Math.floor((next-1)/4);
+    const phrase=choices[block%choices.length];
+    const page=(Math.floor(block/choices.length)*4)+(next-1)%4+1;
+    const jobs=sourceJobs(phrase,page,pendingNow.signal);
     try{
-      const settled=await Promise.allSettled(services.map(s=>s.promise));
+      const settled=await Promise.allSettled(jobs.map(job=>job.promise));
       if(pendingNow.signal.aborted)return;
-      const raw=[],errors=[];
+      const collected=[],failures=[];
       settled.forEach((result,i)=>{
-        if(result.status==='fulfilled')raw.push(...result.value.map(x=>({...x,_query:services[i].query})));
-        else errors.push(`${services[i].provider}: ${result.reason?.message||'Unavailable'}`);
+        if(result.status==='fulfilled')collected.push(...result.value.map(item=>({...item,_query:phrase})));
+        else failures.push(jobs[i].name);
       });
+      // On the first empty batch try a short, broader article topic once, automatically.
+      // This recovers from extremely specific headlines without forcing the editor to retry.
+      if(next===1&&!collected.some(isPhoto)&&!pendingNow.signal.aborted){
+        const fallback=short([...(analysis?.stockSearches||[]),...(analysis?.editorialSearches||[]),analysis?.topic,'cybersecurity computers'].find(term=>term&&short(term).toLowerCase()!==phrase.toLowerCase())||'cybersecurity computers');
+        if(fallback&&fallback.toLowerCase()!==phrase.toLowerCase()){
+          const retry=await Promise.allSettled(sourceJobs(fallback,1,pendingNow.signal).map(job=>job.promise));
+          if(pendingNow.signal.aborted)return;
+          retry.forEach((result,i)=>{
+            if(result.status==='fulfilled')collected.push(...result.value.map(item=>({...item,_query:fallback})));
+            else if(!failures.includes(jobs[i].name))failures.push(jobs[i].name);
+          });
+        }
+      }
       let added=0;
-      for(const item of raw){
-        const key=item.id||item.imageUrl;
-        if(seen.has(key))continue;seen.add(key);
+      for(const item of collected){
         if(!isPhoto(item))continue;
-        const scored=rated(item,item._query);
-        // Keep broad-but-plausible photos, downrank unrelated ones instead of fabricating a high match.
-        if(scored.match.score<32)continue;
-        allImages.push(scored);added++;
+        const key=item.imageUrl||item.id;
+        if(seen.has(key))continue;
+        seen.add(key);
+        allImages.push(rated(item,item._query));added++;
       }
       batch=next;
-      $('results-subtitle').textContent=`“${query}” · ${batch} ${batch===1?'batch':'batches'} explored · ${window.CyberPulseConfig?.stockWorkerUrl||window.CyberPulseConfig?.pixabayWorkerUrl?'professional stock APIs':'openly licensed photo results'} · check source rights`;
-      if(!added&&allImages.length===0){
-        resetState(errors.length===services.length?'Image sources are unavailable':'No matching stock photographs in this batch',
-          errors.length===services.length?'Try again later, or use the Pexels / Pixabay links below.':'Tap “Find more fresh photos” to explore another page or try a different suggested phrase.',errors.length===services.length);
-      } else if(!added){toast('No new matching photos in this batch. Try another batch or a different keyword.');}
-      else if(errors.length){toast(`${added} photos added. Some sources were unavailable.`);}
+      $('results-subtitle').textContent=`“${query}” · ${batch} ${batch===1?'batch':'batches'} · Openverse + Wikimedia Commons · check source licence`;
+      if(!added&&!allImages.length){
+        resetState(failures.length===jobs.length?'Image libraries temporarily unavailable':'No photos found in this batch',
+          'Try Fresh results again or choose another suggested keyword. You can also open the photo libraries below.');
+      }else if(!added){toast('No new photos in this batch. Click again for the next page or try another keyword.');}
+      else if(failures.length){toast(`${added} new photos found. One image library was unavailable; other results are shown.`);}
       renderGrid();show($('more-search'),true);
-    }catch(err){if(!pendingNow.signal.aborted)resetState('Search could not complete',err?.message||'Try again.',true);}
-    finally{if(!pendingNow.signal.aborted){setPending(false);renderGrid();}}
+    }catch(err){
+      if(!pendingNow.signal.aborted){
+        if(allImages.length)toast('A photo source could not load. Previously found photos are still available.');
+        else resetState('Unable to load this batch','Try a new keyword or use the source links below.');
+      }
+    }finally{if(!pendingNow.signal.aborted){setPending(false);renderGrid();}}
   }
   function startNewSearch(q){if(pending){pendingController?.abort();setPending(false);}runSearch(q,{append:false});}
   async function deepSearch(){
@@ -272,8 +296,6 @@
     finally{visionPending=false;$('scan-top').disabled=false;$('vision-upload').value='';}
   }
   function imageAttribution(item){
-    if(item.source==='Pexels')return `Photo by ${item.creator} on Pexels\nPhoto: ${item.sourceUrl}\nLicence: ${item.licenseUrl}`;
-    if(item.source==='Pixabay')return `Photo by ${item.creator} on Pixabay\nPhoto: ${item.sourceUrl}\nLicence: ${item.licenseUrl}`;
     return item.attribution?`${item.attribution}\nOriginal source: ${item.sourceUrl}`:
       `Image: ${item.title}\nPhotographer: ${item.creator}\nLicence: ${item.license}\nTerms: ${item.licenseUrl}\nOriginal source: ${item.sourceUrl}`;
   }
@@ -303,9 +325,9 @@
   function renderCard(item){
     const card=txt('article','image-card');
     const thumb=txt('div','image-thumb');
-    const photo=document.createElement('img');photo.loading='lazy';photo.alt=item.title;photo.src=item.thumbnail;photo.referrerPolicy='no-referrer';
+    const photo=document.createElement('img');photo.loading='lazy';photo.alt=item.title;photo.src=item.thumbnail;photo.referrerPolicy='no-referrer';let thumbnailRetried=false;
     const fallback=txt('div','fallback','Image preview unavailable — view the photographer source');
-    photo.addEventListener('error',()=>{photo.style.display='none';fallback.style.display='grid';});
+    photo.addEventListener('error',()=>{if(!thumbnailRetried&&item.imageUrl!==photo.src){thumbnailRetried=true;photo.src=item.imageUrl;return;}photo.style.display='none';fallback.style.display='grid';});
     const badges=txt('div','image-badges');badges.append(txt('span','source-badge',item.source));
     const fav=txt('button',`favorite-button${favorites[item.id]?' is-saved':''}`,favorites[item.id]?'★ Saved':'☆ Save');
     fav.type='button';fav.setAttribute('aria-label',favorites[item.id]?'Remove saved photo':'Save photo to browser');
@@ -357,8 +379,8 @@
     form.reset();matchFilter.value='0';sourceFilter.value='all';sortFilter.value='match';licenseFilter.value='all';count();
     show($('analysis-empty'),true);show($('analysis-content'),false);show($('visual-intent'),false);
     show($('results-controls'),false);show($('rating-explainer'),false);show($('load-more-wrap'),false);show($('more-search'),false);show($('vision-panel'),false);show($('upload-vision-result'),false);
-    grid.replaceChildren();resetState('Your stock photo options will appear here','Paste an article to see professional photo concepts with rated article match.');
-    $('result-counter').textContent='';$('results-subtitle').textContent='Find wide, high-resolution photos ranked by estimated article relevance.';
+    grid.replaceChildren();resetState('Your article image options will appear here','Paste an article to see image suggestions with estimated match scores.');
+    $('result-counter').textContent='';$('results-subtitle').textContent='Find relevant free-licence photographs, ranked by estimated editorial suitability.';
     $('saved-toggle').classList.remove('active');$('saved-toggle').setAttribute('aria-pressed','false');
   }
   form.addEventListener('submit',e=>{e.preventDefault();analyseNow();});

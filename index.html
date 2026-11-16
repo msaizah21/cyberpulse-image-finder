@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080e1d">
-  <meta name="description" content="CyberPulse Pro: generate article headlines, find professional stock photos and rank banner relevance.">
-  <title>CyberPulse Studio | Stock Image Finder</title>
+  <meta name="description" content="CyberPulse Pro: find editorial photos, suggest article headlines and estimate banner relevance without an API key.">
+  <title>CyberPulse Studio | Image Finder</title>
   <link rel="icon" href="./favicon.png" type="image/png">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -16,7 +16,7 @@
   <header class="topbar page-width">
     <a class="brand" href="./" aria-label="CyberPulse Image Finder home">
       <span class="brand-icon" aria-hidden="true"><img src="./assets/cyberpulse-mark.png" width="40" height="40" alt=""></span>
-      <span><strong>CYBERPULSE</strong><small>STOCK IMAGE STUDIO</small></span>
+      <span><strong>CYBERPULSE</strong><small>EDITORIAL IMAGE STUDIO</small></span>
     </a>
     <div class="top-actions">
       <span class="status-dot"><i aria-hidden="true"></i> Public image discovery</span>
@@ -29,8 +29,8 @@
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-line"></span> BUILT FOR THE CYBERWAZE TEAM · IMAGE DISCOVERY</div>
         <h1 id="hero-title">Find your <em>perfect editorial visual.</em></h1>
-        <p>Paste a story without a title. Get editorial headline ideas, fresh stock-photo discovery, article-match ratings, and optional FREE on-device vision AI that actually examines image pixels.</p>
-        <div class="hero-features"><span><b aria-hidden="true">✓</b> Free visual AI</span><span><b aria-hidden="true">✓</b> Fresh image batches</span><span><b aria-hidden="true">✓</b> No publishing access</span></div>
+        <p>Paste a story without a title. Get editorial headline ideas, fresh image discovery, article-match ratings, and optional FREE on-device vision AI that actually examines image pixels.</p>
+        <div class="hero-features"><span><b aria-hidden="true">✓</b> Optional visual AI</span><span><b aria-hidden="true">✓</b> More photo batches</span><span><b aria-hidden="true">✓</b> No publishing access</span></div>
       </div>
       <div class="hero-side" aria-hidden="true">
         <div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div>
@@ -77,7 +77,7 @@
           <label class="search-label" for="search-query">Visual search keywords</label>
           <div class="query-row"><input id="search-query" maxlength="120" aria-label="Image search keywords" type="text" placeholder="Search keywords"><button id="refresh-search" type="button" class="button button-small">↻ Fresh results</button></div>
           <div id="query-chips" class="query-chips" aria-label="Suggested visual search phrases"></div>
-          <p class="tips-text">Edit keywords and press Enter for a completely new search. <strong>Fresh results</strong> keeps what you found and explores later batches. Photos are illustrative, not evidence of a real incident.</p>
+          <p class="tips-text">Edit keywords and press Enter for a completely new search. <strong>Fresh results</strong> keeps what you found and explores later batches. Photos can be illustrative, not proof of an incident.</p>
           <details class="category-details"><summary>View all available categories</summary><div id="category-list" class="category-list"></div></details>
         </div>
       </aside>
@@ -85,33 +85,33 @@
 
     <section class="results-section" aria-labelledby="results-title">
       <div class="visual-intent" id="visual-intent" hidden>
-        <div class="intent-explainer"><span class="step-label">PHOTO DISCOVERY MODE</span><strong id="visual-context-title">Professional stock photography</strong><p id="visual-context-copy">Wide, high-resolution photographic concepts selected from article themes. A stock image is illustrative and does not depict an actual incident.</p></div>
-        <div class="intent-emblem"><span>✦</span> Photo-only focus</div>
+        <div class="intent-explainer"><span class="step-label">PHOTO DISCOVERY MODE</span><strong id="visual-context-title">Free editorial photography</strong><p id="visual-context-copy">Wide, high-resolution photographic concepts selected from article themes. A stock image is illustrative and does not depict an actual incident.</p></div>
+        <div class="intent-emblem"><span>✦</span> Real photo results</div>
       </div>
-      <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Search landscape, preferably high-resolution photos matched to your article.</p></div>
+      <div class="results-heading"><div><span class="step-label">03 / IMAGE DISCOVERY</span><h2 id="results-title">Image suggestions <span id="result-counter" class="result-counter"></span></h2><p id="results-subtitle">Find openly licensed photos matched to the topic; higher-resolution, wider images appear first when equally relevant.</p></div>
         <div class="results-controls" id="results-controls" hidden>
           <label for="match-filter">Match</label><select id="match-filter"><option value="0">All rated</option><option value="60">60%+</option><option value="75">75%+</option></select>
-          <label for="source-filter">Source</label><select id="source-filter"><option value="all">All sources</option><option value="Pexels">Pexels</option><option value="Pixabay">Pixabay</option><option value="Openverse">Openverse</option></select>
+          <label for="source-filter">Source</label><select id="source-filter"><option value="all">All sources</option><option value="Openverse">Openverse</option><option value="Wikimedia Commons">Wikimedia Commons</option></select>
           <label for="sort-filter">Sort</label><select id="sort-filter"><option value="match">Best match</option><option value="resolution">Resolution</option></select>
           <label for="license-filter">Rights</label><select id="license-filter"><option value="all">Eligible licences</option><option value="no-credit">CC0 / PD + stock licence</option><option value="credit">CC BY / CC BY-SA</option></select>
           <button id="saved-toggle" type="button" class="saved-toggle" aria-pressed="false">☆ Saved <span id="saved-count">0</span></button>
         </div>
       </div>
-      <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to explore photos and illustrations relevant to its topic.</p></div>
+      <div id="result-state" class="result-state"><div class="result-placeholder-icon" aria-hidden="true">▧</div><h3>Your image options will appear here</h3><p>Paste your article above to see relevant photos with a match rating and original source.</p></div>
       <div class="rating-explainer" id="rating-explainer" hidden>ⓘ <strong>Article Match %</strong> starts as an estimated metadata / topic / resolution / banner score. After an optional Vision AI scan it blends metadata with pixel-based topic affinity. Neither percentage is a statistical probability or publication approval.</div>
+      <div id="image-grid" class="image-grid" hidden></div>
+      <div id="load-more-wrap" class="load-more-wrap" hidden><button id="load-more" type="button" class="button button-primary">↻ Find more photos</button><button id="deep-search" type="button" class="button button-quiet">✦ Deep search · 3 batches</button><span id="load-more-status">Each click searches the next photo batch and avoids previously shown images.</span></div>
       <div class="vision-panel panel" id="vision-panel" hidden>
         <div class="vision-top"><div><span class="step-label">FREE / OPT-IN IMAGE VISION</span><h3>Make your match rating actually look at the photo.</h3><p>Run an open-source CLIP image model locally in your browser to compare real photo pixels with article concepts. No paid vision API key. First use downloads model files (potentially hundreds of MB), which may take time and use significant memory.</p></div><span class="vision-tag">PRIVATE ON-DEVICE AI</span></div>
         <div class="vision-actions"><button id="scan-top" class="button button-primary" type="button">✦ AI scan top 3 photos</button><label class="upload-label" for="vision-upload">⌁ Upload photo to scan<input id="vision-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div>
         <p id="vision-status" class="vision-status" role="status" aria-live="polite">Optional: scan a photo to add an AI visual-affinity rating. Some external image hosts block browser image access; in that case download the image from its original source and upload it here.</p>
         <div id="upload-vision-result" class="upload-vision-result" hidden></div>
       </div>
-      <div id="image-grid" class="image-grid" hidden></div>
-      <div id="load-more-wrap" class="load-more-wrap" hidden><button id="load-more" type="button" class="button button-primary">↻ Find more new photos</button><button id="deep-search" type="button" class="button button-quiet">✦ Deep search · 3 batches</button><span id="load-more-status">Each click searches the next photo batch and avoids previously shown images.</span></div>
       <div id="more-search" class="more-search" hidden>
-        <p>Need more options? Try different article-aware search phrases or these professional stock libraries:</p>
+        <p>Need more options? Try different article-aware search phrases or these free, openly licensed image libraries:</p>
         <div id="more-chips" class="query-chips"></div>
-        <div class="provider-links"><a id="open-openverse" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">Openverse ↗</a><a id="open-pexels" href="https://www.pexels.com/" target="_blank" rel="noopener noreferrer">Pexels stock photos ↗</a><a id="open-unsplash" href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash photos ↗</a><a id="open-pixabay" href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">Pixabay ↗</a></div>
-        <p class="more-disclaimer">Verified commercial stock APIs (Pexels or Pixabay) need optional free API access and a secure Worker. Without it, Openverse supplies openly licensed photographs, but not guaranteed professional stock. Source licences and publishing permissions must be checked.</p>
+        <div class="provider-links"><a id="open-openverse" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">Openverse ↗</a><a id="open-commons" href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Wikimedia Commons ↗</a></div>
+        <p class="more-disclaimer">No sign-in, stock API or API key is required. Images come from Openverse and Wikimedia Commons; they are <strong>not guaranteed commercial stock photography</strong>. Verify licence, attribution and quality on the original source before publishing.</p>
       </div>
     </section>
   </main>
@@ -120,7 +120,7 @@
     <div class="footer-brand-block">
       <div class="footer-brand-lockup">
         <img src="./assets/cyberpulse-mark.png" width="42" height="42" alt="CyberPulse logo">
-        <div class="footer-brand-name"><strong>CYBERPULSE</strong><span>Stock Image Studio</span></div>
+        <div class="footer-brand-name"><strong>CYBERPULSE</strong><span>Image Finder</span></div>
       </div>
       <p>Images remain owned by their creators. Always check the original source, license, attribution and any trademark or personality rights before publishing.</p>
     </div>
@@ -142,7 +142,6 @@
     <div class="banner-actions"><button id="banner-download" class="button button-primary" type="button">Download original ↗</button><a id="banner-original" class="button button-quiet" href="https://openverse.org/" target="_blank" rel="noopener noreferrer">View creator source ↗</a></div>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="./config.js"></script>
   <script src="./analysis.js"></script>
   <script src="./relevance.js"></script>
   <script src="./vision.js"></script>
